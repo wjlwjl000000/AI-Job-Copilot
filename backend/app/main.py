@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import auth
+from app.api import auth, agent
 
 app = FastAPI(title="AI Job Copilot")
 app.add_middleware(
@@ -11,6 +11,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+app.include_router(agent.router)
 
 
 @app.get("/health")

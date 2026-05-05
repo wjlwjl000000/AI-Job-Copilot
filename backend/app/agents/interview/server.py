@@ -1,0 +1,38 @@
+from fastapi import FastAPI
+from app.a2a.server import create_a2a_router, mount_agent_card
+from app.a2a.agent_card import create_agent_card
+from app.a2a.types import JsonRpcResponse, TaskResult, TaskStatus, TaskArtifact
+
+app = FastAPI(title="Interview Agent")
+
+agent_card = create_agent_card(
+    agent_id="urn:agent:copilot:interview",
+    name="Interview Agent",
+    description="面试备战专家。基于JD和用户弱项生成面试问题，评估回答质量。",
+    url="http://localhost:8003",
+    skills=[
+        {"id": "generate-interview-qs", "name": "生成面试问题", "description": "基于JD+弱项生成针对性面试题", "examples": ["帮我准备面试"]},
+        {"id": "evaluate-answer", "name": "评估回答", "description": "评估面试回答质量并给出改进建议", "examples": ["评估我的回答"]},
+    ],
+)
+
+mount_agent_card(app, agent_card.model_dump())
+
+
+async def handle_task(request):
+    from app.agents.interview.agent import interview_agent
+    from langchain_core.messages import HumanMessage
+    msg_parts = request.params["message"]["parts"]
+    text = " ".join([p.get("text", "") for p in msg_parts if p["type"] == "text"])
+    result = await interview_agent.ainvoke({"messages": [HumanMessage(content=text)]})
+    return JsonRpcResponse(
+        id=request.id,
+        result=TaskResult(
+            id="task-interview",
+            status=TaskStatus(state="completed"),
+            artifacts=[TaskArtifact(content={"result": str(result)})],
+        ),
+    )
+
+
+app.include_router(create_a2a_router(handler=handle_task))
