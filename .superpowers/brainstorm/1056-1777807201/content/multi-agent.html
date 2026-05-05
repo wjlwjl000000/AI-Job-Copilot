@@ -1,0 +1,118 @@
+<h2>多 Agent 架构 — DAG 状态图</h2>
+<p class="subtitle">按上下文依赖划分专职 Agent，信息独立，仅传递结果和任务</p>
+
+<div class="section">
+  <h3>修正 1：去掉 StreamingMiddleware</h3>
+  <p>你是对的，<code>agent.astream()</code> 原生支持流式输出，不需要中间件包装。去掉。</p>
+</div>
+
+<div class="section">
+  <h3>修正 2：多 Agent 划分方案</h3>
+
+  <div style="background:var(--bg-secondary);border-radius:8px;padding:14px;font-size:0.82em;line-height:1.8">
+
+  <strong>划分原则：</strong>上下文依赖 → 同一上下文的任务归一个 Agent → Agent 间仅传递结构化结果
+
+  <div style="margin-top:10px">
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    <div style="background:var(--bg-primary);padding:10px;border-radius:6px">
+      <strong>Orchestrator Agent</strong><br>
+      <span style="color:var(--text-secondary)">SKILL: onboard-user</span><br>
+      <span style="font-size:0.8em;color:var(--text-secondary)">
+      意图识别 → 任务分解 → 分发到专职 Agent → 汇总结果 → 生成响应<br>
+      轻量协调，<strong>不做重型工作</strong>
+      </span>
+    </div>
+
+    <div style="background:var(--bg-primary);padding:10px;border-radius:6px">
+      <strong>Profile Agent</strong><br>
+      <span style="color:var(--text-secondary)">SKILL: parse-resume, build-profile</span><br>
+      <span style="font-size:0.8em;color:var(--text-secondary)">
+      独立执行，无上游依赖<br>
+      输出：结构化画像 → 传递给 Matching Agent
+      </span>
+    </div>
+
+    <div style="background:var(--bg-primary);padding:10px;border-radius:6px">
+      <strong>Matching Agent</strong><br>
+      <span style="color:var(--text-secondary)">SKILL: match-jobs, score-match, optimize-resume</span><br>
+      <span style="font-size:0.8em;color:var(--text-secondary)">
+      依赖：Profile Agent 的输出<br>
+      输出：匹配结果+弱项 → 传递给 Interview Agent
+      </span>
+    </div>
+
+    <div style="background:var(--bg-primary);padding:10px;border-radius:6px">
+      <strong>Interview Agent</strong><br>
+      <span style="color:var(--text-secondary)">SKILL: generate-interview-qs, evaluate-answer</span><br>
+      <span style="font-size:0.8em;color:var(--text-secondary)">
+      依赖：Matching Agent 的弱项分析<br>
+      输出：面试问题+评估 → 可直接返回前端
+      </span>
+    </div>
+
+    <div style="background:var(--bg-primary);padding:10px;border-radius:6px;grid-column:1/-1">
+      <strong>Support Agent</strong><br>
+      <span style="color:var(--text-secondary)">SKILL: comfort-user, daily-checkin</span><br>
+      <span style="font-size:0.8em;color:var(--text-secondary)">
+      与主链路并行，Orchestrator 在任何节点检测到触发条件时可随时激活<br>
+      输入：用户画像摘要 + 触发事件类型 → 输出：个性化鼓励内容
+      </span>
+    </div>
+  </div>
+
+  </div>
+</div>
+
+<div class="section">
+  <h3>LangGraph StateGraph DAG</h3>
+  <div style="background:var(--bg-secondary);border-radius:8px;padding:14px;font-size:0.82em;line-height:1.8;font-family:monospace">
+                  ┌──────────────────────┐<br>
+       entry →   │  Orchestrator Agent   │<br>
+                  └──┬───────┬───────┬──┘<br>
+              ┌──────┘       │       └──────┐<br>
+              ▼               ▼              ▼<br>
+       ┌────────────┐ ┌────────────┐ ┌────────────┐<br>
+       │  Profile   │ │  Support   │ │ Interview  │<br>
+       │  Agent     │ │  Agent     │ │  Agent     │<br>
+       └─────┬──────┘ └─────┬──────┘ └──────┬─────┘<br>
+             │              │               │<br>
+             ▼              │               │<br>
+       ┌────────────┐       │               │<br>
+       │  Matching  │       │               │<br>
+       │  Agent     │       │               │<br>
+       └─────┬──────┘       │               │<br>
+             │              │               │<br>
+             ▼              ▼               ▼<br>
+       ┌──────────────────────────────────────┐<br>
+       │    结果汇总 → 生成用户响应            │<br>
+       └──────────────────────────────────────┘
+  </div>
+  <p style="font-size:0.8em;color:var(--text-secondary);margin-top:8px">
+    Profile 和 Support 可并行执行（Send API）。Matching 等待 Profile 完成。Interview 等待 Matching 完成。
+  </p>
+</div>
+
+<div class="section">
+  <h3>我的意见</h3>
+
+  <div class="pros-cons">
+    <div class="pros"><h4>为什么值得做</h4>
+      <ul>
+        <li>每个 Agent 上下文独立，SKILL 数量少，决策更准，不会被其他 Agent 的 SKILL description 干扰</li>
+        <li>Profile/Support 可并行，减少用户等待时间</li>
+        <li>Agent 职责清晰，单 Agent 出问题不影响全局</li>
+        <li>架构深度在简历上更有说服力</li>
+      </ul>
+    </div>
+    <div class="cons"><h4>注意点</h4>
+      <ul>
+        <li>5 个 Agent 意味着 5 套 system_prompt + 5 组 SKILL 分配，需要仔细调校</li>
+        <li>Orchestrator 是关键——它决定了任务分发的正确性。建议 Orchestrator 不执行重型 SKILL，只做路由和汇总</li>
+      </ul>
+    </div>
+  </div>
+
+  <p style="margin-top:12px"><strong>建议：采纳。</strong>5 个 Agent 分工明确，DAG 表达清晰。当前规模不需要更多 Agent，后续扩展时按上下文边界再拆分即可。</p>
+</div>

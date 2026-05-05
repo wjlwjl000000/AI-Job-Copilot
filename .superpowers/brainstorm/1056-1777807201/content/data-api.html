@@ -1,0 +1,86 @@
+<h2>数据模型 &amp; API 设计</h2>
+
+<div class="section">
+  <h3>核心数据实体</h3>
+  <div style="background:var(--bg-secondary);border-radius:8px;padding:14px;font-size:0.82em;font-family:monospace;line-height:1.7">
+
+<strong>UserProfile (用户求职画像)</strong>
+  skill_tags: jsonb &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# 技能标签+等级
+  work_years: int &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; # 工作年限
+  education: jsonb &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# 学历/学校/专业
+  projects: jsonb &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# 项目经验
+  target: jsonb &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# 目标{城市,薪资,行业,岗位}
+  preference: jsonb &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# 偏好设置
+  embedding: vector(1536) &nbsp; &nbsp; &nbsp;# 画像向量
+  scores: jsonb &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# 竞争力/匹配度/完整度
+
+<strong>Resume (简历)</strong>
+  user_id → User
+  base_version: bool &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# 是否基础版本
+  target_role: str &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; # 目标岗位(版本标签)
+  content: jsonb &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; # 结构化简历内容
+  file_path: str &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# 原始文件路径
+  match_score: float &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# 匹配度评分
+
+<strong>Job (职位)</strong>
+  source: str &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# 来源(BOSS/拉勾/手动)
+  jd_content: text &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# 职位描述
+  requirements: jsonb &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# 结构化需求
+  embedding: vector(1536) &nbsp; &nbsp; &nbsp;# JD向量
+  status: str &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; # 招聘中/已关闭
+
+<strong>Application (投递记录)</strong>
+  user_id → User &nbsp; resume_id → Resume &nbsp; job_id → Job
+  status: enum &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; # 待投/已投/初筛/面试/offer/拒
+  timeline: jsonb &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# 状态变更时间线
+  notes: text &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# 用户备注
+
+<strong>Interview (面试记录)</strong>
+  application_id → Application
+  questions: jsonb &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# 面试问题+回答
+  feedback: text &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# AI评估反馈
+  weaknesses: jsonb &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# 薄弱项+改进建议
+
+<strong>ExperienceStory (经历故事)</strong>
+  embedding: vector(1536) &nbsp; &nbsp; &nbsp;# 内容向量
+  tags: jsonb &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# 行业/岗位/年限/结果
+  content: text &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# 故事内容
+  source: str &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# 来源(爬取/用户贡献)
+</div>
+</div>
+
+<div class="section">
+  <h3>核心 API</h3>
+  <div style="background:var(--bg-secondary);border-radius:8px;padding:14px;font-size:0.82em;font-family:monospace;line-height:1.8">
+
+<span style="color:var(--accent)">POST</span> /api/profile/analyze &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# 解析简历→生成画像
+<span style="color:var(--accent)">GET</span> &nbsp;/api/profile &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; # 获取画像
+<span style="color:var(--accent)">PUT</span> &nbsp;/api/profile &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; # 更新画像
+
+<span style="color:var(--accent)">POST</span> /api/resumes/upload &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# 上传基础简历
+<span style="color:var(--accent)">POST</span> /api/resumes/optimize &nbsp; &nbsp; &nbsp; &nbsp;# 为目标JD优化简历(生成新版本)
+<span style="color:var(--accent)">POST</span> /api/resumes/{id}/score &nbsp; &nbsp; &nbsp;# 简历-JD匹配度评分
+
+<span style="color:var(--accent)">POST</span> /api/jobs/search &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# 搜索/匹配职位
+<span style="color:var(--accent)">GET</span> &nbsp;/api/jobs/{id} &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; # 职位详情
+
+<span style="color:var(--accent)">POST</span> /api/applications &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# 创建投递记录
+<span style="color:var(--accent)">GET</span> &nbsp;/api/applications &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# 投递列表(看板)
+
+<span style="color:var(--accent)">POST</span> /api/interviews/generate &nbsp; &nbsp; &nbsp;# 生成面试问题
+<span style="color:var(--accent)">POST</span> /api/interviews/evaluate &nbsp; &nbsp; &nbsp;# 评估回答
+
+<span style="color:var(--accent)">POST</span> /api/support/match-story &nbsp; &nbsp; &nbsp;# 匹配相似经历故事
+<span style="color:var(--accent)">GET</span> &nbsp;/api/support/feed &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# 情感支持内容流
+</div>
+</div>
+
+<div class="section">
+  <h3>RAG 情感支持流程</h3>
+  <div style="background:var(--bg-secondary);border-radius:8px;padding:14px;font-size:0.82em;line-height:1.8">
+    1. <strong>触发节点：</strong>匹配度低 / 投递被拒 / 面试失败 / 拿到offer<br>
+    2. <strong>画像向量检索</strong> → pgvector 中查找与用户画像相似的经历故事<br>
+    3. <strong>Agent 生成</strong> → 基于检索结果 + 用户当前处境 → 个性化鼓励文案<br>
+    4. <strong>前端展示</strong> → 温和推送，不做弹窗打扰
+  </div>
+</div>

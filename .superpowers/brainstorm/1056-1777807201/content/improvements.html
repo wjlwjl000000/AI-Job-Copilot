@@ -1,0 +1,55 @@
+<h2>本轮改进建议汇总</h2>
+
+<div class="section">
+  <h3>1. AI API 配置</h3>
+  <p>使用 <code>ChatOpenAI()</code>：model="gpt-5-mini", base_url="https://api.chatanywhere.tech"</p>
+
+  <h3>2. 向量存储</h3>
+  <p>应用启动时即连接 Chroma，用 <code>add_documents()</code> 一行写入，不手写向量字段。</p>
+
+  <h3>3. 上下文管理</h3>
+  <p>自定义 middleware：滑动窗口 + 自动摘要。窗口内保留原文，窗口外压缩为摘要。按<strong>字符数</strong>控制（非 token）。不适用 LangChain 内置 <code>SummarizationMiddleware</code>。</p>
+
+  <h3>4. 系统流程软连接</h3>
+  <p>Planner 只规划用户<strong>当前明确请求</strong>的任务。Synthesizer 在回复末尾附上"基于当前状态，您可以..."的软性建议。用户可自由选择任何能力，无强制流程链路。Agent 之间的连接 = 用户的选择权。</p>
+
+  <h3>5. Supervisor 任务依赖解析</h3>
+  <p>Planner 需识别用户消息中的先后顺序："先优化简历，再准备面试" → Step1: optimize → Step2: interview（依赖 Step1）。Executor 按依赖层执行。</p>
+
+  <h3>6. Agent Card 按 A2A 标准注册</h3>
+  <p>Agent Card 端点：<code>/.well-known/agent-card.json</code>。Supervisor 启动时广播/轮询发现。前端提供注册界面，用户输入 Agent URL → 拉取 Card → 持久化。</p>
+
+  <h3>7. 系统 Agent 不可删除</h3>
+  <p>内置 5 个 Agent 是系统骨架，不可删除。用户可通过前端注册自定义 Agent，可管理。</p>
+
+  <h3>8. 通信协议按 A2A 标准</h3>
+  <p>废弃自定义 JSON 格式。改用 A2A 标准 JSON-RPC 2.0：</p>
+  <ul>
+    <li>方法: <code>tasks/sendMessage</code></li>
+    <li>Message: <code>{role, parts: [{type, text/content/href}]}</code></li>
+    <li>Task 状态: submitted → working → input-required → completed / failed / canceled</li>
+    <li><code>input-required</code> = 当前的 "priority=true"</li>
+    <li>SSE 事件: messageDelta, taskStatusUpdate, taskArtifactUpdate</li>
+  </ul>
+
+  <h3>9. System Prompt SKILL 占位符</h3>
+  <p>不再写静态 system_prompt。使用占位符：</p>
+  <div style="background:var(--bg-secondary);padding:10px;border-radius:6px;font-family:monospace;font-size:0.8em">
+    "你是简历与画像专家。\n可用技能：{skills_list}\n当前技能详情：{skill_content}"
+  </div>
+  <p>SkillLoadingMiddleware 在加载 SKILL 时填充。</p>
+
+  <h3>10. Supervisor 异步流式输出</h3>
+  <p>Synthesizer 内部使用 LLM <code>stream()</code> 逐 chunk 输出自然语言，包装在 <code>graph.astream()</code> 事件流中。前端收到增量文本逐字渲染。</p>
+
+  <h3>11. Support Agent 永不 priority=true</h3>
+  <p>Support 的 A2A 响应永远 <code>state: "completed"</code>。结果总是嵌入调用者（Matching/Profile/Interview）的返回值。不会独立触发中断。</p>
+
+  <h3>12. 用户回复传入：Command(resume=...)</h3>
+  <p>Executor 内 <code>interrupt()</code> 的<strong>返回值</strong>就是用户回复，不需要额外 state 字段：</p>
+  <div style="background:var(--bg-secondary);padding:10px;border-radius:6px;font-family:monospace;font-size:0.8em">
+    user_answer = interrupt({"type": "user_question", ...})<br>
+    # user_answer 直接可用，发给原 Agent 继续
+  </div>
+  <p>恢复方式：<code>graph.astream(Command(resume={...}), config)</code></p>
+</div>

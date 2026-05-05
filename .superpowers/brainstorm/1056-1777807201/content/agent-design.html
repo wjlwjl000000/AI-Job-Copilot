@@ -1,0 +1,140 @@
+<h2>Agent 架构设计 — LangGraph + Agent SKILLS</h2>
+
+<p class="subtitle">从"函数调用"进化为"智能决策编排"</p>
+
+<div class="section">
+  <h3>为什么用 LangGraph</h3>
+  <p>当前设计是线性的：API → Service → LLM → 返回。LangGraph 让它变成<strong>有状态的智能决策流程</strong>：</p>
+
+  <div class="split">
+    <div class="mockup" style="flex:1">
+      <div class="mockup-header">当前：线性调用</div>
+      <div class="mockup-body" style="font-size:0.8em;line-height:1.7">
+        POST /api/resumes/upload<br>
+        → parse() → return json<br><br>
+        POST /api/jobs/search<br>
+        → match() → return list<br><br>
+        <span style="color:var(--text-secondary)">每次调用独立，无上下文</span>
+      </div>
+    </div>
+    <div class="mockup" style="flex:1">
+      <div class="mockup-header" style="background:var(--accent)">目标：Agent 编排</div>
+      <div class="mockup-body" style="font-size:0.8em;line-height:1.7">
+        用户上传简历<br>
+        Agent 自主决策：<br>
+        1. parse_resume ✓<br>
+        2. 发现是 AI 方向 → build_profile<br>
+        3. 自动搜索匹配职位<br>
+        4. 发现匹配度低 → 建议优化<br>
+        5. 推送相似经历鼓励<br><br>
+        <span style="color:var(--accent)">一次触发，Agent 自主编排全流程</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Agent SKILLS 体系</h3>
+  <p>每个 Skill 是 LangChain Tool，Agent 根据用户状态自主决定调用哪些 Skill：</p>
+
+  <h4>🔧 工具型 Skills</h4>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.82em">
+    <div style="background:var(--bg-secondary);padding:8px;border-radius:6px">
+      <strong>parse_resume</strong><br>
+      <span style="color:var(--text-secondary)">PDF/Word/文本 → 结构化内容</span>
+    </div>
+    <div style="background:var(--bg-secondary);padding:8px;border-radius:6px">
+      <strong>build_profile</strong><br>
+      <span style="color:var(--text-secondary)">提取技能图谱+经验向量</span>
+    </div>
+    <div style="background:var(--bg-secondary);padding:8px;border-radius:6px">
+      <strong>optimize_resume</strong><br>
+      <span style="color:var(--text-secondary)">针对目标JD生成优化版本</span>
+    </div>
+    <div style="background:var(--bg-secondary);padding:8px;border-radius:6px">
+      <strong>score_match</strong><br>
+      <span style="color:var(--text-secondary)">简历-JD多维度匹配评分</span>
+    </div>
+    <div style="background:var(--bg-secondary);padding:8px;border-radius:6px">
+      <strong>match_jobs</strong><br>
+      <span style="color:var(--text-secondary)">画像向量 → Chroma语义搜索</span>
+    </div>
+    <div style="background:var(--bg-secondary);padding:8px;border-radius:6px">
+      <strong>generate_questions</strong><br>
+      <span style="color:var(--text-secondary)">基于弱项生成针对性面试题</span>
+    </div>
+    <div style="background:var(--bg-secondary);padding:8px;border-radius:6px">
+      <strong>evaluate_answer</strong><br>
+      <span style="color:var(--text-secondary)">面试回答评估+改进建议</span>
+    </div>
+    <div style="background:var(--bg-secondary);padding:8px;border-radius:6px">
+      <strong>search_stories</strong><br>
+      <span style="color:var(--text-secondary)">Chroma检索相似经历故事</span>
+    </div>
+  </div>
+
+  <h4>🧠 编排型 Skills (会调用多个工具 Skill)</h4>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.82em;margin-top:6px">
+    <div style="background:var(--bg-secondary);padding:8px;border-radius:6px;border-left:3px solid var(--accent)">
+      <strong>onboard_user</strong><br>
+      <span style="color:var(--text-secondary)">parse → profile → match → score 全链路</span>
+    </div>
+    <div style="background:var(--bg-secondary);padding:8px;border-radius:6px;border-left:3px solid var(--accent)">
+      <strong>prepare_interview</strong><br>
+      <span style="color:var(--text-secondary)">score_match弱点 → generate → simulate</span>
+    </div>
+    <div style="background:var(--bg-secondary);padding:8px;border-radius:6px;border-left:3px solid var(--accent)">
+      <strong>daily_checkin</strong><br>
+      <span style="color:var(--text-secondary)">新职位匹配 + 投递提醒 + 情感支持</span>
+    </div>
+    <div style="background:var(--bg-secondary);padding:8px;border-radius:6px;border-left:3px solid var(--accent)">
+      <strong>comfort_user</strong><br>
+      <span style="color:var(--text-secondary)">search_stories → 个性化鼓励</span>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>LangGraph 状态机设计</h3>
+  <div style="background:var(--bg-secondary);border-radius:8px;padding:14px;font-size:0.82em;line-height:1.8">
+
+<strong>共享状态 (AgentState)：</strong>
+  user_id, profile (画像), current_context (当前场景),
+  conversation_history, pending_actions
+
+<strong>核心图节点：</strong><br>
+  <code>understand</code> → 理解用户意图和当前状态<br>
+  <code>decide</code> → Agent 决定调用哪些 Skill<br>
+  <code>execute</code> → 执行选中的 Skill<br>
+  <code>observe</code> → 评估执行结果，决定下一步<br>
+  <code>respond</code> → 生成面向用户的自然语言响应
+
+<strong>路由逻辑：</strong><br>
+  understand → decide → execute → observe → decide (循环)
+  或 observe → respond (完成)
+</div>
+</div>
+
+<div class="section">
+  <h3>我的意见</h3>
+
+  <div class="pros-cons">
+    <div class="pros"><h4>为什么应该做</h4>
+      <ul>
+        <li>LangGraph + LangChain 是同一个生态，集成零成本</li>
+        <li>Agent SKILLS 让功能模块化，新增能力只需注册新 Tool</li>
+        <li>状态图让"贯穿全流程"的情感支持和画像更新变得自然——不再是各模块各自调用</li>
+        <li>在简历上能体现出工程深度（Agent 架构 vs 简单的 API 调大模型）</li>
+      </ul>
+    </div>
+    <div class="cons"><h4>需要考虑的</h4>
+      <ul>
+        <li>Agent 决策不可控时需要 fallback：关键路径（如简历解析）仍应有确定性调用路径</li>
+        <li>LangGraph 调试比普通 API 调用复杂，建议加 tracing（LangSmith 或自建）</li>
+        <li>开发初期先做 3-4 个核心 Skill，验证模式后再扩展，不要一次做 10+ 个</li>
+      </ul>
+    </div>
+  </div>
+
+  <p style="margin-top:12px"><strong>建议：采纳。</strong>以 LangGraph StateGraph 为核心编排层，每个功能封装为 Tool/Skill。但保留 FastAPI 直接调用路径作为 fallback，关键操作不依赖 Agent 决策。</p>
+</div>

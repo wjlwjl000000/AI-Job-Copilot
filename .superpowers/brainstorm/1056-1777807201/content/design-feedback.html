@@ -1,0 +1,115 @@
+<h2>设计反馈 &mdash; 三个问题的回应</h2>
+
+<div class="section">
+  <h3>1. 简历与 JD 匹配度评估</h3>
+  <p>包含了，但在各个模块中分散呈现。更清晰的定位是：<strong>匹配度评估是一个跨模块的核心能力</strong>，被多个场景调用：</p>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:0.85em">
+    <div style="background:var(--bg-secondary);padding:12px;border-radius:6px">
+      <strong>简历优化</strong><br>
+      <span style="color:var(--text-secondary)">上传简历后立即对目标 JD 评分，指出差距</span>
+    </div>
+    <div style="background:var(--bg-secondary);padding:12px;border-radius:6px">
+      <strong>职位匹配</strong><br>
+      <span style="color:var(--text-secondary)">批量匹配推荐职位，按匹配度排序</span>
+    </div>
+    <div style="background:var(--bg-secondary);padding:12px;border-radius:6px">
+      <strong>面试备战</strong><br>
+      <span style="color:var(--text-secondary)">基于匹配弱项生成针对性面试问题</span>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>2. "多版本管理"是什么</h3>
+  <p>同一个用户可以为不同目标岗位维护<strong>不同版本的简历</strong>：</p>
+
+  <div style="background:var(--bg-secondary);padding:14px;border-radius:8px;font-size:0.85em;line-height:1.8">
+    <strong>场景举例：</strong><br>
+    你是 Python 后端，投递时可能面对三类岗位：<br>
+    &bull; <strong>Python 后端工程师</strong> → 侧重 Django/FastAPI、数据库优化<br>
+    &bull; <strong>AI 应用开发</strong> → 侧重 LangChain、向量数据库、Prompt 工程<br>
+    &bull; <strong>全栈工程师</strong> → 侧重 Vue.js 项目经验、前后端协作<br><br>
+    AI 基于同一份基础简历，为每个方向生成一个<strong>针对性的优化版本</strong>，不会互相覆盖。每个版本有自己的匹配评分历史。
+  </div>
+</div>
+
+<div class="section">
+  <h3>3. 用户求职画像 — 我的建议</h3>
+  <p><strong>这个想法很好，应该加。</strong>我建议把它定位为<strong>系统的数据中枢</strong>，而不仅仅是"又一个功能模块"。</p>
+
+  <h4>为什么值得加</h4>
+  <div style="font-size:0.85em;line-height:1.7">
+    <ul>
+      <li><strong>当前设计的问题：</strong>每个模块独立理解用户，简历解析一次、JD分析一次、面试又是一次 — 各模块对用户的认知是碎片化的</li>
+      <li><strong>画像的作用：</strong>一个结构化的用户画像（技能图谱 + 经验向量 + 偏好 + 目标），所有模块共享，越用越准</li>
+      <li><strong>情感支持的升级：</strong>有了画像，RAG 检索不再是泛泛的"后端求职者经历"，而是"2年Python、转行AI方向、投了50家还没上岸"这种精准匹配</li>
+    </ul>
+  </div>
+
+  <h4>画像应包含什么</h4>
+  <div style="background:var(--bg-secondary);padding:14px;border-radius:8px;font-size:0.85em;line-height:1.7">
+    <strong>简历提取（自动）</strong> — 技能标签、工作年限、教育背景、项目经验 → 向量<br>
+    <strong>用户补充（主动）</strong> — 期望城市、薪资范围、目标行业、求职状态<br>
+    <strong>行为积累（动态）</strong> — 投递偏好、高频目标岗位、面试薄弱环节<br>
+    <strong>多维评分（自动）</strong> — 技能竞争力分、市场匹配度、简历完整度
+  </div>
+
+  <h4>画像与各模块的关系</h4>
+  <div style="background:var(--bg-secondary);padding:14px;border-radius:8px;font-size:0.8em;font-family:monospace;line-height:1.8">
+    ┌─────────────────────────────────────┐<br>
+    │ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; 👤 用户求职画像 &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; │<br>
+    │ &nbsp; &nbsp; 技能图谱 / 经验向量 / 偏好 / 目标 &nbsp; &nbsp; │<br>
+    └──────┬──────┬──────┬──────┬───────┘<br>
+    &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; │ &nbsp; &nbsp; &nbsp; &nbsp;│ &nbsp; &nbsp; &nbsp; &nbsp;│ &nbsp; &nbsp; &nbsp; &nbsp;│<br>
+    &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; ▼ &nbsp; &nbsp; &nbsp; &nbsp;▼ &nbsp; &nbsp; &nbsp; &nbsp;▼ &nbsp; &nbsp; &nbsp; &nbsp;▼<br>
+    &nbsp; 简历优化 &nbsp; 职位匹配 &nbsp; 投递追踪 &nbsp; 面试备战<br>
+    &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;│<br>
+    &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;▼<br>
+    &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; 💬 情感支持 (精准 RAG)
+  </div>
+</div>
+
+<div class="section">
+  <h3>修订后的模块体系</h3>
+  <div class="cards">
+    <div class="card" style="cursor:default;border-color:var(--accent)">
+      <div class="card-body">
+        <h3>👤 用户求职画像</h3>
+        <p style="font-size:0.85em">中枢层 — 为所有模块提供统一的用户理解</p>
+      </div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+    <div class="card" style="cursor:default">
+      <div class="card-body">
+        <h3>📄 简历优化</h3>
+        <p style="font-size:0.8em">多版本管理 + JD匹配评分</p>
+      </div>
+    </div>
+    <div class="card" style="cursor:default">
+      <div class="card-body">
+        <h3>🎯 职位匹配</h3>
+        <p style="font-size:0.8em">语义搜索 + 智能推荐</p>
+      </div>
+    </div>
+    <div class="card" style="cursor:default">
+      <div class="card-body">
+        <h3>📬 投递追踪</h3>
+        <p style="font-size:0.8em">状态看板 + 时间线</p>
+      </div>
+    </div>
+    <div class="card" style="cursor:default">
+      <div class="card-body">
+        <h3>🎤 面试备战</h3>
+        <p style="font-size:0.8em">模拟面试 + 薄弱项针对性训练</p>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="cursor:default;margin-top:8px">
+    <div class="card-body">
+      <h3>💬 情感支持</h3>
+      <p style="font-size:0.8em">贯穿全流程 — 基于画像的精准 RAG 经历匹配</p>
+    </div>
+  </div>
+</div>

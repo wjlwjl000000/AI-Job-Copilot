@@ -1,0 +1,101 @@
+<h2>技术方案对比</h2>
+<p class="subtitle">AI 求职助手 — 三种全栈架构方案</p>
+
+<div class="section">
+  <h3>方案 A &mdash; FastAPI + Vue.js（推荐）</h3>
+  <p>Python 异步后端 + 现代 SPA 前端，前后端分离。FastAPI 原生支持流式响应，天然适合 AI/LLM 场景。Vue.js 在国内生态成熟，组件库（Element Plus）丰富。</p>
+
+  <div class="split">
+    <div class="mockup" style="flex:1">
+      <div class="mockup-header">架构</div>
+      <div class="mockup-body" style="font-size:0.85em">
+        <div style="display:flex;gap:12px;align-items:stretch">
+          <div style="background:var(--bg-secondary);padding:10px;border-radius:6px;flex:1;text-align:center">
+            <strong>Vue.js 3</strong><br>
+            <span style="font-size:0.8em;color:var(--text-secondary)">Vite + Element Plus</span><br>
+            <span style="font-size:0.75em;color:var(--text-secondary)">SPA → Nginx</span>
+          </div>
+          <div style="display:flex;align-items:center;font-weight:bold">→ REST ←</div>
+          <div style="background:var(--bg-secondary);padding:10px;border-radius:6px;flex:1;text-align:center">
+            <strong>FastAPI</strong><br>
+            <span style="font-size:0.8em;color:var(--text-secondary)">Python 异步</span><br>
+            <span style="font-size:0.75em;color:var(--text-secondary)">LangChain + DeepSeek</span>
+          </div>
+          <div style="display:flex;align-items:center;font-weight:bold">→</div>
+          <div style="background:var(--bg-secondary);padding:10px;border-radius:6px;flex:1;text-align:center">
+            <strong>PostgreSQL</strong><br>
+            <span style="font-size:0.8em;color:var(--text-secondary)">pgvector</span><br>
+            <span style="font-size:0.75em;color:var(--text-secondary)">RAG 向量存储</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pros-cons">
+    <div class="pros"><h4>Pros</h4>
+      <ul>
+        <li>FastAPI 异步 + 流式，AI 场景最佳</li>
+        <li>前后端分离，部署灵活，可独立扩展</li>
+        <li>Vue 国内生态好，招人/上手都快</li>
+        <li>LangChain 官方支持 FastAPI 集成</li>
+      </ul>
+    </div>
+    <div class="cons"><h4>Cons</h4>
+      <ul>
+        <li>两套代码仓库，初始化工作量大一些</li>
+        <li>需要处理 CORS / 认证跨域</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>方案 B &mdash; Django + htmx</h3>
+  <p>Django 全栈单体应用，服务端渲染为主，htmx 做局部刷新。适合快速出 MVP，但前端交互体验不如 SPA。</p>
+
+  <div class="pros-cons">
+    <div class="pros"><h4>Pros</h4>
+      <ul>
+        <li>Python 单一语言，开发效率高</li>
+        <li>Django Admin / ORM / Auth 开箱即用</li>
+        <li>单体部署简单，Docker 单容器即可</li>
+        <li>代码量大但结构清晰</li>
+      </ul>
+    </div>
+    <div class="cons"><h4>Cons</h4>
+      <ul>
+        <li>AI 流式响应支持较弱（SSE 需额外处理）</li>
+        <li>前端交互复杂时 htmx 吃力</li>
+        <li>大型 SPA 级体验难以实现</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>方案 C &mdash; Next.js 全栈 + Python AI 微服务</h3>
+  <p>Next.js 做全栈和 BFF，AI 处理抽成 Python 微服务。国内岗位更认，但如果后端重 AI，Python 的比例会越来越大。</p>
+
+  <div class="pros-cons">
+    <div class="pros"><h4>Pros</h4>
+      <ul>
+        <li>SEO/SSR 开箱即用</li>
+        <li>前后端一体化 TypeScript</li>
+        <li>React 生态最丰富</li>
+      </ul>
+    </div>
+    <div class="cons"><h4>Cons</h4>
+      <ul>
+        <li>Python AI 代码变成"二等公民"</li>
+        <li>两套服务之间维护成本高</li>
+        <li>国内 Next.js 岗位少于 Vue</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>推荐：方案 A</h3>
+  <p>理由：你的核心逻辑（AI 处理、RAG 检索、简历解析）都在 Python 侧，FastAPI 是 AI 项目的事实标准。Vue.js 在国内求职市场认可度高。前后端分离也符合展示"全栈能力"的目标。</p>
+</div>

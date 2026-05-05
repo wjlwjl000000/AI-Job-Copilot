@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bash *)",
+      "WebSearch",
+      "WebFetch(domain:www.langchain.cn)",
+      "Bash(conda activate *)",
+      "Bash(python -m pytest tests/test_health.py -v)",
+      "Bash(where python *)",
+      "Bash(/e/E/Environment/anaconda3/envs/LangChain/python.exe *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(pytest tests/test_models/test_user.py -v)",
+      "Bash(E:/E/Environment/anaconda3/envs/langchain/python.exe *)",
+      "Bash(\"E:/E/Environment/anaconda3/envs/langchain/python.exe\" -m alembic init alembic)",
+      "Bash(\"E:/E/Environment/anaconda3/envs/langchain/python.exe\" -m alembic revision --autogenerate -m \"init_all_models\")",
+      "Bash(\"E:/E/Environment/anaconda3/envs/langchain/python.exe\" -m alembic revision -m \"init_all_models\")",
+      "Bash(\"E:/E/Environment/anaconda3/envs/langchain/python.exe\" -c \"import importlib; importlib.import_module\\('alembic.versions.25c15a0f7f21_init_all_models'\\)\")",
+      "Bash(\"E:/E/Environment/anaconda3/envs/langchain/python.exe\" -c \"compile\\(open\\('alembic/versions/25c15a0f7f21_init_all_models.py'\\).read\\(\\), '25c15a0f7f21_init_all_models.py', 'exec'\\); print\\('OK'\\)\")",
+      "Bash(\"E:/E/Environment/anaconda3/envs/langchain/python.exe\" -c \"from app.models import User, UserProfile, Resume, Job, Application, ExperienceStory; print\\('All 6 models imported OK'\\); print\\(f'User: {User.__tablename__}'\\); print\\(f'UserProfile: {UserProfile.__tablename__}'\\); print\\(f'Resume: {Resume.__tablename__}'\\); print\\(f'Job: {Job.__tablename__}'\\); print\\(f'Application: {Application.__tablename__}'\\); print\\(f'ExperienceStory: {ExperienceStory.__tablename__}'\\)\")",
+      "Bash(git *)",
+      "Bash(pytest tests/test_rag/test_vector_store.py -v)",
+      "Bash(where conda *)",
+      "Bash(pytest tests/test_api/test_auth.py -v)",
+      "Bash(python -m pytest tests/test_api/test_auth.py -v)",
+      "Bash(python -c \"from app.main import app; print\\('Routes:', [r.path for r in app.routes]\\)\")",
+      "Bash(conda run *)",
+      "Bash(pytest tests/test_a2a/test_client.py tests/test_a2a/test_registry.py -v)",
+      "Bash(\"E:/E/Environment/anaconda3/envs/langchain/python.exe\" -m pytest tests/test_middleware/ -v)",
+      "Bash(\"E:/E/Environment/anaconda3/envs/langchain/python.exe\" -m pytest tests/test_agents/test_support_agent.py -v)",
+      "Bash(\"E:/E/Environment/anaconda3/envs/langchain/python.exe\" -m pytest tests/test_graph/test_executor.py -v)",
+      "Bash(\"E:/E/Environment/anaconda3/envs/langchain/python.exe\" -m pytest tests/test_graph/ -v)"
+    ]
+  }
+}

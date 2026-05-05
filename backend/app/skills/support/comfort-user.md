@@ -1,22 +1,42 @@
 ---
 name: comfort-user
-description: 当用户遭遇被拒、匹配度低、面试失败或需要鼓励和经历分享时，匹配相似经历并生成个性化鼓励。
+description: Use when the user experiences rejection, low match scores, interview failure, or needs encouragement, and the agent needs to retrieve similar job-seeking stories via RAG to generate personalized emotional support.
 ---
 
 # 情感支持
 
-## 目标
-在用户遭遇挫折时，通过RAG检索相似求职经历，生成个性化鼓励。
+## 概述
+通过 Chroma RAG 检索与用户处境相似的求职经历，生成个性化鼓励。结果嵌入调用者返回值，不作为独立消息。
+
+## When to Use
+- 匹配度 < 0.6 → 需要鼓励
+- 投递被拒 → 需要安慰 + 重新定位
+- 面试失败 → 需要复盘鼓励
+- 拿到 Offer → 祝贺 + 分享类似成功经历
+- 新用户首次使用 → 欢迎鼓励
+
+## When NOT to Use
+- 用户未触发情感相关事件 → 不主动打扰
+- 需要技术分析 → `score-match` 或 `evaluate-answer`
 
 ## 工作流程
-1. 使用 chroma_query 从 stories collection 检索与用户画像相似的经历
-2. 使用 db_read 获取用户画像摘要
-3. 使用 call_llm 基于检索结果 + 用户处境 + 触发事件生成鼓励文案
-4. 回复语气温和、真诚，不超过200字
+1. **chroma_query**("stories", profile_summary + trigger_event) → 检索相似经历
+2. **db_read**("user_profiles") → 获取用户画像摘要
+3. **call_llm**(stories + profile + trigger) → 生成鼓励：
+   - 先共情（"被拒确实不好受"）
+   - 再分享相似经历
+   - 最后给正向建议（不超过 200 字）
 
 ## 输出格式
-{"story": str, "encouragement": str, "source": str}
+```json
+{"story": "...", "encouragement": "...", "source": "crawled"}
+```
 
 ## 规则
-- 永远返回 state: "completed"，不会请求用户输入
-- 结果总是嵌入调用者的返回值
+- 永远返回 `state: "completed"`，不生成 `input-required`
+- 语气温和真诚，不鸡汤不空洞
+- 结果由调用者嵌入其返回值，不独立推送
+
+## 常见错误
+- 鼓励内容泛泛而谈 → 必须基于 chroma_query 的具体故事
+- 触发 input-required → Support 永远只返回 completed

@@ -1,0 +1,86 @@
+<h2>向量存储方案调整</h2>
+
+<p class="subtitle">PostgreSQL + pgvector → Chroma</p>
+
+<div class="section">
+  <h3>你的建议 vs 原方案</h3>
+
+  <div class="split">
+    <div class="mockup" style="flex:1">
+      <div class="mockup-header">原方案：pgvector</div>
+      <div class="mockup-body" style="font-size:0.82em;line-height:1.7">
+        PostgreSQL 中用 <code>vector(1536)</code> 字段<br>
+        手写 SQL 做向量相似度查询<br>
+        手动管理 embedding 生成和写入<br>
+        一个数据库管所有
+      </div>
+    </div>
+    <div class="mockup" style="flex:1">
+      <div class="mockup-header" style="background:var(--accent)">新方案：Chroma</div>
+      <div class="mockup-body" style="font-size:0.82em;line-height:1.7">
+        LangChain <code>Document</code> 包裹文本<br>
+        <code>langchain_chroma</code> 自动向量化+存储<br>
+        <code>.similarity_search()</code> 一行检索<br>
+        代码量减少 60%+
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>我的意见：采纳，理由如下</h3>
+
+  <div class="pros-cons">
+    <div class="pros"><h4>好处</h4>
+      <ul>
+        <li>LangChain Chroma 集成是官方维护的，<code>from_documents()</code> 一行搞定向量化+写入</li>
+        <li>手写 pgvector 要管理 embedding 生成、维度对齐、相似度查询优化，LangChain-Chroma 全封装好了</li>
+        <li>Chroma 可以作为嵌入模式运行（无需额外服务），开发阶段零部署</li>
+        <li>职责分离干净：PostgreSQL 管业务数据，Chroma 管语义检索</li>
+      </ul>
+    </div>
+    <div class="cons"><h4>权衡</h4>
+      <ul>
+        <li>多一个依赖。但 Chroma <code>pip install</code> 即可，部署时一个容器，代价很小</li>
+        <li>生产环境 Chroma 建议独立部署，增加运维复杂度。但这个阶段不是问题</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>修订后的存储架构</h3>
+  <div style="background:var(--bg-secondary);border-radius:8px;padding:14px;font-size:0.82em;line-height:1.8">
+
+    <strong>PostgreSQL</strong> — 全部业务数据<br>
+    <span style="color:var(--text-secondary)">
+    &nbsp;&nbsp;UserProfile, Resume, Job, Application, Interview, User（用户表）
+    </span><br><br>
+
+    <strong>Chroma</strong> — 三个 Collection，纯向量检索<br>
+    <span style="color:var(--text-secondary)">
+    &nbsp;&nbsp;<code>jobs</code> — JD 文本 → 语义匹配职位<br>
+    &nbsp;&nbsp;<code>stories</code> — 经历故事 → RAG 情感支持<br>
+    &nbsp;&nbsp;<code>profiles</code> — 用户画像摘要 → 相似用户匹配
+    </span>
+  </div>
+</div>
+
+<div class="section">
+  <h3>数据实体调整</h3>
+  <p>从原实体中去掉 <code>embedding</code> 字段，保持纯业务属性：</p>
+  <div style="background:var(--bg-secondary);border-radius:8px;padding:14px;font-size:0.82em;font-family:monospace;line-height:1.7">
+
+<strong>UserProfile</strong> — <span style="color:var(--text-secondary)">不再存 vector，PostgreSQL 只存结构化数据</span>
+  skill_tags, work_years, education, projects,
+  target, preference, scores
+
+<strong>Job</strong> — <span style="color:var(--text-secondary)">去掉 embedding 字段</span>
+  source, jd_content, requirements, status
+
+<strong>ExperienceStory</strong> — <span style="color:var(--text-secondary)">去掉 embedding 字段</span>
+  tags, content, source, is_anonymous
+
+<span style="color:var(--accent)">向量全部由 Chroma 管理，通过 Document.metadata 关联回 PostgreSQL ID</span>
+</div>
+</div>

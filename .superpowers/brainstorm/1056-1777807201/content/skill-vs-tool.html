@@ -1,0 +1,118 @@
+<h2>SKILL vs TOOL — 两层架构</h2>
+<p class="subtitle">修正理解：SKILL是业务资源，TOOL是原子操作</p>
+
+<div class="section">
+  <h3>关键区别</h3>
+  <div class="split">
+    <div class="mockup" style="flex:1">
+      <div class="mockup-header">TOOL（原子操作）</div>
+      <div class="mockup-body" style="font-size:0.82em;line-height:1.8">
+        <code>db_read()</code> — 读数据库<br>
+        <code>db_write()</code> — 写数据库<br>
+        <code>chroma_query()</code> — 向量检索<br>
+        <code>call_llm()</code> — 调用大模型<br>
+        <code>parse_pdf()</code> — 解析PDF<br>
+        <code>send_notification()</code> — 发通知<br><br>
+        <span style="color:var(--text-secondary)">单一、不可再分的操作</span><br>
+        <span style="color:var(--text-secondary)">LangChain @tool 实现</span>
+      </div>
+    </div>
+    <div class="mockup" style="flex:1">
+      <div class="mockup-header" style="background:var(--accent)">SKILL（业务资源集合）</div>
+      <div class="mockup-body" style="font-size:0.82em;line-height:1.8">
+        <code>score-match.md</code><br>
+        <code>optimize-resume.md</code><br>
+        <code>comfort-user.md</code><br><br>
+        <span style="color:var(--text-secondary)">完成一项业务任务所需：</span><br>
+        <span style="color:var(--text-secondary)">工作流程 + 执行指令 + 输出规范</span><br>
+        <span style="color:var(--text-secondary)">.md 文件，Agent 按需加载</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>SKILL.md 格式</h3>
+  <div style="background:var(--bg-secondary);border-radius:8px;padding:14px;font-size:0.82em;font-family:monospace;line-height:1.7">
+<span style="color:var(--text-secondary)">---</span>
+<span style="color:var(--accent)">name:</span> score-match
+<span style="color:var(--accent)">description:</span> 当用户想了解自己的简历与某个岗位的匹配程度时使用，或当系统中存在待匹配的职位-简历对时使用
+<span style="color:var(--text-secondary)">---</span>
+
+<span style="color:var(--text-secondary)"># 简历-职位匹配度评估</span>
+
+<span style="color:var(--text-secondary)">## 目标</span>
+评估用户简历与目标职位的匹配程度，给出多维度评分和可操作的改进建议。
+
+<span style="color:var(--text-secondary)">## 工作流程</span>
+1. 从用户画像中获取技能标签、工作年限、项目经验
+2. 从目标职位中提取需求技能、经验要求、学历要求
+3. 从四个维度对比：技能重合度、经验匹配度、学历匹配度、薪资匹配度
+4. 生成评分报告，列出优势项和差距项
+5. 对每个差距项给出具体改进建议
+
+<span style="color:var(--text-secondary)">## 输出格式</span>
+{ "overall": float, "skill_match": float, "experience_match": float,
+  "strengths": [...], "gaps": [...], "suggestions": [...] }
+
+<span style="color:var(--text-secondary)">## 关联</span>
+- 匹配度低于0.6时，建议加载 optimize-resume 或 comfort-user
+</div>
+</div>
+
+<div class="section">
+  <h3>Agent 加载 SKILL 的流程</h3>
+  <div style="background:var(--bg-secondary);border-radius:8px;padding:14px;font-size:0.82em;line-height:1.8">
+    <strong>1. 启动时</strong> — Agent 只拿到 SKILL 名称 + description 列表（极低 token）<br>
+    <strong>2. 用户请求</strong> — Agent 根据 description 判断需要哪个 SKILL<br>
+    <strong>3. 加载 body</strong> — 读取对应 .md 全部内容，注入上下文<br>
+    <strong>4. 执行任务</strong> — Agent 按照 SKILL 中的工作流程，调用 TOOL 完成<br>
+    <strong>5. 完成后</strong> — 从上下文卸载 SKILL body，释放 token
+  </div>
+</div>
+
+<div class="section">
+  <h3>完整技能清单</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.82em">
+    <div style="background:var(--bg-secondary);padding:10px;border-radius:6px">
+      <strong>parse-resume.md</strong><br>
+      <span style="color:var(--text-secondary)">当用户上传或更新简历时，解析并提取结构化信息</span>
+    </div>
+    <div style="background:var(--bg-secondary);padding:10px;border-radius:6px">
+      <strong>build-profile.md</strong><br>
+      <span style="color:var(--text-secondary)">当简历解析完成或用户主动补充信息后，构建/更新求职画像</span>
+    </div>
+    <div style="background:var(--bg-secondary);padding:10px;border-radius:6px">
+      <strong>score-match.md</strong><br>
+      <span style="color:var(--text-secondary)">当用户想了解简历与岗位的匹配程度时使用</span>
+    </div>
+    <div style="background:var(--bg-secondary);padding:10px;border-radius:6px">
+      <strong>optimize-resume.md</strong><br>
+      <span style="color:var(--text-secondary)">当需要针对特定JD优化简历、或匹配度低于0.6时使用</span>
+    </div>
+    <div style="background:var(--bg-secondary);padding:10px;border-radius:6px">
+      <strong>match-jobs.md</strong><br>
+      <span style="color:var(--text-secondary)">当用户希望搜索/发现匹配的职位机会时使用</span>
+    </div>
+    <div style="background:var(--bg-secondary);padding:10px;border-radius:6px">
+      <strong>generate-interview-qs.md</strong><br>
+      <span style="color:var(--text-secondary)">当用户获得面试机会、需要针对性准备时使用</span>
+    </div>
+    <div style="background:var(--bg-secondary);padding:10px;border-radius:6px">
+      <strong>evaluate-answer.md</strong><br>
+      <span style="color:var(--text-secondary)">当用户完成模拟面试回答、需要评估和改进建议时使用</span>
+    </div>
+    <div style="background:var(--bg-secondary);padding:10px;border-radius:6px">
+      <strong>comfort-user.md</strong><br>
+      <span style="color:var(--text-secondary)">当用户遭遇被拒、低匹配、面试失败或需要鼓励时使用</span>
+    </div>
+    <div style="background:var(--bg-secondary);padding:10px;border-radius:6px">
+      <strong>onboard-user.md</strong><br>
+      <span style="color:var(--text-secondary)">当新用户首次使用系统，需要走完整初始化流程时使用</span>
+    </div>
+    <div style="background:var(--bg-secondary);padding:10px;border-radius:6px">
+      <strong>daily-checkin.md</strong><br>
+      <span style="color:var(--text-secondary)">当用户进行每日签到、或系统定时触发生成日报时使用</span>
+    </div>
+  </div>
+</div>

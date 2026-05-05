@@ -1,0 +1,114 @@
+<h2>系统架构总览</h2>
+<p class="subtitle">FastAPI + Vue.js — 模块划分与数据流</p>
+
+<div class="section">
+  <h3>五大功能模块</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+
+    <div class="option" style="margin:0;cursor:default;border-color:transparent;background:var(--bg-secondary)">
+      <div class="content">
+        <h3>1. 简历优化</h3>
+        <p style="font-size:0.85em">上传 → 解析 → 多版本管理 → AI 优化建议 → 岗位匹配度评分</p>
+      </div>
+    </div>
+
+    <div class="option" style="margin:0;cursor:default;border-color:transparent;background:var(--bg-secondary)">
+      <div class="content">
+        <h3>2. 职位匹配</h3>
+        <p style="font-size:0.85em">简历向量化 → 搜索/爬取职位 → 语义匹配 → 智能推荐排序</p>
+      </div>
+    </div>
+
+    <div class="option" style="margin:0;cursor:default;border-color:transparent;background:var(--bg-secondary)">
+      <div class="content">
+        <h3>3. 投递追踪</h3>
+        <p style="font-size:0.85em">投递记录 → 状态看板 → AI 总结 → 时间线可视化</p>
+      </div>
+    </div>
+
+    <div class="option" style="margin:0;cursor:default;border-color:transparent;background:var(--bg-secondary)">
+      <div class="content">
+        <h3>4. 面试备战</h3>
+        <p style="font-size:0.85em">JD 解析 → 生成问题 → 模拟面试 → 回答评估 → 改进建议</p>
+      </div>
+    </div>
+
+    <div class="option" style="margin:0;cursor:default;border-color:transparent;background:var(--bg-secondary);grid-column:1/-1">
+      <div class="content">
+        <h3>5. 情感支持 (贯穿全流程)</h3>
+        <p style="font-size:0.85em">RAG 检索相似经历 → Agent 生成个性化鼓励 → 关键节点推送（匹配度低/被拒/面试失败/拿到offer）</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>技术分层</h3>
+
+  <div style="background:var(--bg-secondary);border-radius:8px;padding:16px">
+    <div style="display:flex;flex-direction:column;gap:8px">
+
+      <div style="background:var(--bg-primary);padding:10px;border-radius:6px;text-align:center;font-size:0.85em">
+        <strong>前端层</strong> — Vue.js 3 + Vite + Element Plus + Pinia
+      </div>
+
+      <div style="display:flex;gap:8px">
+        <div style="background:var(--bg-primary);padding:10px;border-radius:6px;flex:1;text-align:center;font-size:0.85em">
+          <strong>API 网关</strong><br><span style="font-size:0.75em;color:var(--text-secondary)">Nginx / Caddy</span>
+        </div>
+      </div>
+
+      <div style="background:var(--bg-primary);padding:10px;border-radius:6px;text-align:center;font-size:0.85em">
+        <strong>后端层</strong> — FastAPI + LangChain + Celery (异步任务)
+      </div>
+
+      <div style="display:flex;gap:8px">
+        <div style="background:var(--bg-primary);padding:10px;border-radius:6px;flex:1;text-align:center;font-size:0.85em">
+          <strong>PostgreSQL</strong><br><span style="font-size:0.75em;color:var(--text-secondary)">业务数据</span>
+        </div>
+        <div style="background:var(--bg-primary);padding:10px;border-radius:6px;flex:1;text-align:center;font-size:0.85em">
+          <strong>pgvector</strong><br><span style="font-size:0.75em;color:var(--text-secondary)">向量存储/RAG</span>
+        </div>
+        <div style="background:var(--bg-primary);padding:10px;border-radius:6px;flex:1;text-align:center;font-size:0.85em">
+          <strong>Redis</strong><br><span style="font-size:0.75em;color:var(--text-secondary)">缓存/任务队列</span>
+        </div>
+      </div>
+
+      <div style="background:var(--bg-primary);padding:10px;border-radius:6px;text-align:center;font-size:0.85em">
+        <strong>AI 层</strong> — DeepSeek API / 通义千问 API (可切换)
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>核心数据流</h3>
+  <div style="background:var(--bg-secondary);border-radius:8px;padding:14px;font-size:0.85em;line-height:1.8">
+    📄 用户上传简历
+    → 🔍 简历解析提取技能/经历
+    → 🧠 向量化存入 pgvector
+    → 🎯 匹配职位 (语义相似度)
+    → 📊 展示匹配度 + 优化建议
+    → 📬 投递后跟踪状态
+    → 🎤 面试准备 + AI 模拟
+    → 💬 全流程 RAG 情感支持
+  </div>
+</div>
+
+<div class="section">
+  <h3>项目目录结构</h3>
+  <div style="background:var(--bg-secondary);border-radius:8px;padding:14px;font-size:0.8em;font-family:monospace;line-height:1.7">
+    copilot/<br>
+    ├── backend/ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# FastAPI 后端<br>
+    │&nbsp;&nbsp; ├── api/ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; # 路由<br>
+    │&nbsp;&nbsp; ├── core/ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# 配置/安全<br>
+    │&nbsp;&nbsp; ├── models/ &nbsp; &nbsp; &nbsp; &nbsp; # SQLAlchemy ORM<br>
+    │&nbsp;&nbsp; ├── services/ &nbsp; &nbsp; &nbsp; # 业务逻辑+AI<br>
+    │&nbsp;&nbsp; ├── rag/ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; # RAG 检索<br>
+    │&nbsp;&nbsp; └── tasks/ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;# Celery 异步<br>
+    └── frontend/ &nbsp; &nbsp; &nbsp; &nbsp;# Vue.js 3 SPA<br>
+    &nbsp;&nbsp;&nbsp;&nbsp; ├── src/views/ &nbsp; &nbsp; &nbsp;# 页面<br>
+    &nbsp;&nbsp;&nbsp;&nbsp; ├── src/components/ &nbsp;# 组件<br>
+    &nbsp;&nbsp;&nbsp;&nbsp; └── src/stores/ &nbsp; &nbsp; &nbsp;# Pinia 状态<br>
+  </div>
+</div>
