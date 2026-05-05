@@ -6,17 +6,20 @@ from app.a2a.client import A2AClient
 a2a_client = A2AClient()
 
 
-async def _execute_task(task: dict, client: A2AClient) -> tuple[dict, object]:
-    """执行单个 A2A 任务，返回 (task_info, result)。"""
+async def _execute_task(task: dict, client: A2AClient) -> tuple[dict, dict | None]:
+    """执行单个 A2A 任务，返回 (task_info, result_or_none)。连接失败返回 None。"""
     agent_url = f"http://{task['agent']}:8001"
-    result = await client.send_message(agent_url, message={
-        "role": "user",
-        "parts": [
-            {"type": "text", "text": f"执行任务: {task['action']}"},
-            {"type": "application/json", "content": task["data"]},
-        ]
-    })
-    return task, result
+    try:
+        result = await client.send_message(agent_url, message={
+            "role": "user",
+            "parts": [
+                {"type": "text", "text": f"执行任务: {task['action']}"},
+                {"type": "application/json", "content": task["data"]},
+            ]
+        })
+        return task, result
+    except Exception:
+        return task, None
 
 
 async def executor_node(state: SupervisorState) -> dict:
@@ -30,6 +33,11 @@ async def executor_node(state: SupervisorState) -> dict:
 
     for coro in asyncio.as_completed(running):
         task, result = await coro
+
+        if result is None:
+            # Sub-Agent 不可用（DNS/网络错误），标记为失败继续
+            state["all_results"][task["agent"]] = [{"error": "agent_unavailable"}]
+            continue
 
         if result.result and result.result.status.state == "input-required":
             user_answer = interrupt({
@@ -53,4 +61,12 @@ async def executor_node(state: SupervisorState) -> dict:
             else:
                 state["all_results"][task["agent"]] = []
 
-    return {"all_results": state["all_results"]}
+    # 全部 Agent 不可用时跳过 Replanner，直接让 Synthesizer 回复
+    all_failed = all(
+        isinstance(v, list) and len(v) > 0 and isinstance(v[0], dict) and "error" in v[0]
+        for v in state["all_results"].values()
+    )
+    result = {"all_results": state["all_results"]}
+    if all_failed:
+        result["should_continue"] = False
+    return result

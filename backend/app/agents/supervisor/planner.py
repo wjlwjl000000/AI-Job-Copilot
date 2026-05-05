@@ -1,22 +1,9 @@
 import json
-from pydantic import BaseModel
 from langchain_core.messages import SystemMessage, HumanMessage
 from app.agents.supervisor.state import SupervisorState
 from app.tools.llm import llm
 
 
-class PlanTask(BaseModel):
-    agent: str
-    action: str
-    data: dict
-    depends_on: list[str] = []
-
-
-class PlanSchema(BaseModel):
-    tasks: list[PlanTask]
-
-
-# Global registry instance — will be initialized with actual agents in production
 class DummyRegistry:
     def get_all_summaries(self) -> list[dict]:
         return [
@@ -28,23 +15,37 @@ class DummyRegistry:
 
 registry = DummyRegistry()
 
+PLANNER_PROMPT = """你是 Supervisor。根据用户意图生成执行计划，输出纯 JSON（不要markdown代码块）。
+
+识别任务之间的依赖关系：如果用户说'先X再Y'，Y应标记 depends_on=[X所在的agent]。
+不要自动追加用户未请求的任务（软连接原则）。
+每个任务的 agent 必须是可用 Agent 列表中的名称。
+
+可用 Agent:
+{agent_cards}
+
+输出格式:
+{{"tasks": [{{"agent": "profile-agent", "action": "parse", "data": {{"file_path": "..."}}, "depends_on": []}}]}}"""
+
 
 def planner_node(state: SupervisorState) -> dict:
     agent_cards = registry.get_all_summaries()
+    prompt = PLANNER_PROMPT.format(agent_cards=json.dumps(agent_cards, ensure_ascii=False))
+    user_msg = state["messages"][-1].content if state["messages"] else ""
 
-    plan = llm.with_structured_output(PlanSchema).invoke([
-        SystemMessage(
-            "你是 Supervisor。根据用户意图生成执行计划。"
-            "识别任务之间的依赖关系：如果用户说'先X再Y'，Y应标记 depends_on=[X所在的agent]。"
-            "不要自动追加用户未请求的任务（软连接原则）。"
-            f"\n可用 Agent:\n{json.dumps(agent_cards, ensure_ascii=False)}"
-        ),
-        *state["messages"],
-    ])
+    raw = llm.invoke([SystemMessage(content=prompt), HumanMessage(content=user_msg)]).content
+    # Parse JSON from LLM output (strip markdown fences if any)
+    raw = raw.strip()
+    if raw.startswith("```"):
+        raw = raw.split("\n", 1)[-1].rsplit("\n```", 1)[0]
+    try:
+        plan_data = json.loads(raw)
+    except json.JSONDecodeError:
+        plan_data = {"tasks": []}
 
     return {
-        "plan": [t.model_dump() for t in plan.tasks],
-        "goal": state["messages"][-1].content if state["messages"] else "",
+        "plan": plan_data.get("tasks", []),
+        "goal": user_msg,
         "loop_count": 0,
         "max_loops": 3,
         "all_results": {},

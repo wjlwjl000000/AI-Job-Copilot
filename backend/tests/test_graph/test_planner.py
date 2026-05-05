@@ -1,16 +1,19 @@
 from app.agents.supervisor.state import SupervisorState
-from app.agents.supervisor.planner import planner_node, PlanTask, PlanSchema
+from app.agents.supervisor.planner import planner_node, DummyRegistry
 
 
 def test_planner_node_is_callable():
     assert callable(planner_node)
 
 
-def test_plan_task_model():
-    task = PlanTask(agent="profile-agent", action="parse", data={"file_path": "test.pdf"}, depends_on=[])
-    assert task.agent == "profile-agent"
-    assert task.action == "parse"
-    assert task.depends_on == []
+def test_dummy_registry_has_three_agents():
+    reg = DummyRegistry()
+    cards = reg.get_all_summaries()
+    assert len(cards) == 3
+    names = [c["name"] for c in cards]
+    assert "profile-agent" in names
+    assert "matching-agent" in names
+    assert "interview-agent" in names
 
 
 def test_supervisor_state_fields():

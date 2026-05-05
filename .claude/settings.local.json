@@ -31,7 +31,23 @@
       "Bash(\"E:/E/Environment/anaconda3/envs/langchain/python.exe\" -m pytest tests/test_graph/test_executor.py -v)",
       "Bash(\"E:/E/Environment/anaconda3/envs/langchain/python.exe\" -m pytest tests/test_graph/ -v)",
       "Bash(docker compose *)",
-      "Bash(alembic upgrade *)"
+      "Bash(alembic upgrade *)",
+      "Bash(curl -s http://localhost:8080/health)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/)",
+      "Bash(curl -v -X POST http://localhost:8080/api/agent/chat -H \"Content-Type: application/json\" -d '{\"message\":\"hello\"}')",
+      "Bash(curl -s -X POST http://localhost:8080/api/resumes/upload -F \"file=@E:/E/projects/pycharm/NEW AI Job Copilot/backend/tests/conftest.py\")",
+      "Bash(curl -s http://localhost:8080/api/profile)",
+      "Bash(curl -s http://localhost:8080/api/resumes)",
+      "Bash(curl -s -X POST http://localhost:8080/api/jobs -H \"Content-Type: application/json\" -d '{\"source\":\"manual\",\"jd_content\":\"Python后端，FastAPI+Django\"}')",
+      "Bash(curl -s http://localhost:8080/api/applications/stats)",
+      "Bash(curl -s -X POST http://localhost:8080/api/jobs -H \"Content-Type: application/json\" -d '{\"source\":\"manual\"}')",
+      "Bash(curl -s -X POST http://localhost:8080/api/jobs -H \"Content-Type: application/json\" -d '{}')",
+      "Bash(curl -v -X POST http://localhost:8080/api/jobs -H \"Content-Type: application/json\" -d '{}')",
+      "Bash(curl *)",
+      "Bash(xxd)",
+      "Bash(docker exec *)",
+      "Bash(python -c \"import json; print\\(json.dumps\\({'message':'帮我看看后端岗位的匹配度'}\\)\\)\")",
+      "Bash(python -c \"import json; print\\(json.dumps\\({'message':'帮我分析简历'}\\)\\)\")"
     ]
   }
 }
