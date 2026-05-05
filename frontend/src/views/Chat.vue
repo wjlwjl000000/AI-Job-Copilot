@@ -1,7 +1,7 @@
 <template>
   <div class="chat-container">
     <div class="messages" ref="msgContainer">
-      <div v-for="(msg, i) in messages" :key="i" :class="['message', msg.role]">
+      <div v-for="msg in messages" :key="msg.id" v-memo="[msg.id]" :class="['message', msg.role]">
         <div class="avatar">{{ msg.role === 'user' ? 'U' : 'AI' }}</div>
         <div class="content">{{ msg.content }}</div>
       </div>
@@ -58,6 +58,23 @@ const thinking = ref(false)
 const msgContainer = ref(null)
 const fileQueue = ref(null)
 let currentTurnId = null
+let msgIdCounter = 0
+const MAX_MESSAGES = 200
+const TRIM_COUNT = 50
+
+function addMessage(role, content) {
+  messages.value.push({ role, content, id: ++msgIdCounter })
+  if (messages.value.length > MAX_MESSAGES) {
+    const trimmed = messages.value.splice(0, TRIM_COUNT)
+    // 查找并移除旧的归档提示
+    const archiveIdx = messages.value.findIndex(m => m.id === 'archive')
+    if (archiveIdx >= 0) messages.value.splice(archiveIdx, 1)
+    messages.value.unshift({
+      role: 'system', content: `[... 已自动归档 ${trimmed.length} 条更早的消息 ...]`,
+      archived: true, id: 'archive',
+    })
+  }
+}
 
 function scrollDown() {
   nextTick(() => { if (msgContainer.value) msgContainer.value.scrollTop = msgContainer.value.scrollHeight })
@@ -102,7 +119,7 @@ async function sendMessage() {
     text += `\n\n[附件简历内容]:\n${fileQueue.value.text}`
   }
 
-  messages.value.push({ role: 'user', content: text })
+  addMessage('user', text)
   thinking.value = true
   scrollDown()
 
@@ -142,7 +159,7 @@ async function sendMessage() {
 
 async function resumeChat() {
   if (!userAnswer.value.trim()) return
-  messages.value.push({ role: 'user', content: userAnswer.value })
+  addMessage('user', userAnswer.value)
   const text = userAnswer.value; userAnswer.value = ''
   thinking.value = true
   scrollDown()
@@ -178,8 +195,9 @@ async function resumeChat() {
 </script>
 
 <style scoped>
-.chat-container { display: flex; flex-direction: column; height: 100vh; }
+.chat-container { display: flex; flex-direction: column; height: 100%; }
 .messages { flex: 1; overflow-y: auto; padding: 16px; }
+.message.system .content { background: #f5f5f5; color: #999; font-size: 12px; text-align: center; border: 1px dashed #e0e0e0; max-width: 80%; margin: 0 auto; }
 .message { display: flex; margin: 12px 0; }
 .message.user { flex-direction: row-reverse; }
 .avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #e0e0e0; font-size: 12px; margin: 0 8px; flex-shrink: 0; }
@@ -192,7 +210,7 @@ async function resumeChat() {
 @keyframes blink { 0%,80%,100% { opacity: 0; } 40% { opacity: 1; } }
 
 /* File queue */
-.file-queue { padding: 8px 16px; background: #fafafa; border-top: 1px solid #eee; }
+.file-queue { padding: 8px 16px; background: #fafafa; border-top: 1px solid #eee; flex-shrink: 0; }
 .file-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: white; border: 1px solid #e0e0e0; border-radius: 8px; max-width: 400px; }
 .file-icon { position: relative; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
 .file-icon .spinner { position: absolute; inset: 0; border: 3px solid #e0e0e0; border-top-color: #1976d2; border-radius: 50%; animation: spin 0.8s linear infinite; }
