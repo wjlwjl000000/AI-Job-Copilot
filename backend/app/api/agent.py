@@ -1,7 +1,8 @@
 import asyncio
 import json
+import os
 import uuid
-from fastapi import APIRouter
+from fastapi import APIRouter, UploadFile, File
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from langgraph.types import Command
@@ -69,6 +70,23 @@ async def resume_chat(request: ChatRequest):
         yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+@router.post("/parse-file")
+async def parse_file(file: UploadFile = File(...)):
+    """Receive a resume file, parse it, return extracted text"""
+    import tempfile
+    # Save uploaded file to temp location
+    suffix = os.path.splitext(file.filename or "resume.pdf")[1]
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        tmp.write(await file.read())
+        tmp_path = tmp.name
+    try:
+        from app.tools.parser import parse_document
+        result = await parse_document.ainvoke({"file_path": tmp_path})
+        return {"status": "ok", "text": result.get("text", ""), "metadata": result.get("metadata", {}), "filename": file.filename}
+    finally:
+        os.unlink(tmp_path)
 
 
 class RegisterRequest(BaseModel):
