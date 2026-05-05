@@ -1,0 +1,17 @@
+[
+  {
+    "tags": {"industry": "互联网", "role": "Python后端", "years": "2-3", "outcome": "offer"},
+    "content": "毕业后第一份工作做了两年Python后端，后来想转AI方向。投了80多份简历，面试了20多家，最后拿到了一家AI创业公司的Offer。关键是在简历中把后端项目经验往AI方向靠。",
+    "source": "crawled", "source_url": "", "is_anonymous": true, "approved": true
+  },
+  {
+    "tags": {"industry": "互联网", "role": "AI工程", "years": "1-3", "outcome": "rejected_then_offer"},
+    "content": "我被拒了十几次，每次面试都会记下面试官的问题回来复盘。最大的感受是：面试不仅是考察技术，也是双向选择的过程。被拒不代表你不够好，只是和那个岗位不太匹配。",
+    "source": "crawled", "source_url": "", "is_anonymous": true, "approved": true
+  },
+  {
+    "tags": {"industry": "金融", "role": "数据分析", "years": "3-5", "outcome": "offer"},
+    "content": "在银行做了三年数据分析后想跳槽互联网。第一个月投简历完全没回音，后来找了一个前辈帮我改简历，把金融项目经验翻译成互联网公司能看懂的语言，一个月内就拿到了3个面试。",
+    "source": "crawled", "source_url": "", "is_anonymous": true, "approved": true
+  }
+]

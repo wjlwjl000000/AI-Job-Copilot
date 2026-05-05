@@ -6,6 +6,11 @@ from pydantic import BaseModel
 from langgraph.types import Command
 from langchain_core.messages import HumanMessage
 from app.agents.supervisor.graph import graph
+from app.a2a.registry import AgentRegistry
+from app.a2a.client import A2AClient
+
+client = A2AClient()
+registry = AgentRegistry(client=client)
 
 router = APIRouter(prefix="/api/agent", tags=["agent"])
 
@@ -59,3 +64,29 @@ async def resume_chat(request: ChatRequest):
         yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+class RegisterRequest(BaseModel):
+    agent_url: str
+
+
+@router.post("/registry")
+async def register_agent(req: RegisterRequest):
+    try:
+        card = await registry.register(req.agent_url)
+        return {"status": "registered", "name": card["name"]}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@router.get("/registry")
+async def list_registry():
+    return registry.list_all()
+
+
+@router.delete("/registry/{agent_name}")
+async def unregister_agent(agent_name: str):
+    if registry.is_system_agent(agent_name):
+        return {"status": "error", "message": "系统Agent不可删除"}
+    registry.unregister(agent_name)
+    return {"status": "deleted"}
