@@ -1,3 +1,4 @@
+import asyncio
 import json
 import uuid
 from fastapi import APIRouter
@@ -42,7 +43,11 @@ async def agent_chat(request: ChatRequest):
                 yield f"data: {json.dumps(event['__interrupt__'], ensure_ascii=False)}\n\n"
             elif "synthesizer" in event:
                 content = event["synthesizer"].get("synthesized_response", "")
-                yield f"data: {json.dumps({'type': 'response', 'content': content, 'turn_id': turn_id}, ensure_ascii=False)}\n\n"
+                # Stream character-by-character for real-time display
+                for i in range(0, len(content), 3):
+                    chunk = content[i:i+3]
+                    yield f"data: {json.dumps({'type': 'chunk', 'content': chunk, 'turn_id': turn_id}, ensure_ascii=False)}\n\n"
+                    await asyncio.sleep(0.02)
         yield f"data: {json.dumps({'type': 'done', 'turn_id': turn_id}, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
