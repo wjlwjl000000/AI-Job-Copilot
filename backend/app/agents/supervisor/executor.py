@@ -6,9 +6,18 @@ from app.a2a.client import A2AClient
 a2a_client = A2AClient()
 
 
+AGENT_PORTS = {
+    "profile-agent": 8001,
+    "matching-agent": 8002,
+    "interview-agent": 8003,
+    "support-agent": 8004,
+}
+
+
 async def _execute_task(task: dict, client: A2AClient) -> tuple[dict, dict | None]:
     """执行单个 A2A 任务，返回 (task_info, result_or_none)。连接失败返回 None。"""
-    agent_url = f"http://{task['agent']}:8001"
+    port = AGENT_PORTS.get(task["agent"], 8001)
+    agent_url = f"http://{task['agent']}:{port}"
     try:
         result = await client.send_message(agent_url, message={
             "role": "user",
@@ -46,7 +55,7 @@ async def executor_node(state: SupervisorState) -> dict:
                 "task_id": result.result.id,
             })
             continued = await a2a_client.send_message(
-                agent_url=f"http://{task['agent']}:8001",
+                agent_url=f"http://{task['agent']}:{port}",
                 message={
                     "role": "user",
                     "parts": [{"type": "text", "text": user_answer.get("answer", "")}],
