@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.api import auth
 
 app = FastAPI(title="AI Job Copilot")
 app.add_middleware(
@@ -9,6 +10,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+
 
 @app.get("/health")
 def health():
