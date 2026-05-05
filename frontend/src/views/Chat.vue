@@ -20,7 +20,8 @@
 
 <script setup>
 import { ref, nextTick } from 'vue'
-import { sendChatMessage, resumeInterruptedChat } from '../api'
+import { api } from '../api'
+const { sendChatMessage, resumeChat: resumeInterruptedChat } = api
 
 const messages = ref([])
 const input = ref('')
