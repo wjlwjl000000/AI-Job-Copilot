@@ -29,7 +29,9 @@
       "Bash(\"E:/E/Environment/anaconda3/envs/langchain/python.exe\" -m pytest tests/test_middleware/ -v)",
       "Bash(\"E:/E/Environment/anaconda3/envs/langchain/python.exe\" -m pytest tests/test_agents/test_support_agent.py -v)",
       "Bash(\"E:/E/Environment/anaconda3/envs/langchain/python.exe\" -m pytest tests/test_graph/test_executor.py -v)",
-      "Bash(\"E:/E/Environment/anaconda3/envs/langchain/python.exe\" -m pytest tests/test_graph/ -v)"
+      "Bash(\"E:/E/Environment/anaconda3/envs/langchain/python.exe\" -m pytest tests/test_graph/ -v)",
+      "Bash(docker compose *)",
+      "Bash(alembic upgrade *)"
     ]
   }
 }
