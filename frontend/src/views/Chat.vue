@@ -1,11 +1,7 @@
 <template>
   <div class="chat-container">
     <div class="messages" ref="msgContainer">
-      <div v-if="thinking" class="message agent">
-        <div class="avatar">AI</div>
-        <div class="content thinking">思考中<span class="dots"><span>.</span><span>.</span><span>.</span></span></div>
-      </div>
-      <div v-for="msg in messages" :key="msg.id" v-memo="[msg.id]" :class="['message', msg.role]">
+      <div v-for="msg in messages" :key="msg.id" v-memo="[msg.id]" :class="['message', msg.role, { thinking: msg.thinking }]">
         <div class="avatar">{{ msg.role === 'user' ? 'U' : 'AI' }}</div>
         <div class="content">
           <div v-if="msg.attachment" class="msg-attach">📄 {{ msg.attachment.name }} ({{ msg.attachment.chars }}字)</div>
@@ -126,7 +122,10 @@ async function sendMessage() {
     : displayText
 
   addMessage('user', displayText, attachment)
-  thinking.value = true
+  fileQueue.value = null  // 立即清除附件队列
+
+  const thinkingMsg = { role: 'agent', content: '思考中...', thinking: true, id: ++msgIdCounter }
+  messages.value.push(thinkingMsg)
   scrollDown()
 
   const response = await sendChatMessage(sendText, currentTurnId)
@@ -145,29 +144,36 @@ async function sendMessage() {
       try {
         const data = JSON.parse(line.slice(6))
         if (data.type === 'chunk') {
-          if (!agentMsg) { agentMsg = { role: 'agent', content: '' }; messages.value.push(agentMsg) }
+          if (!agentMsg) {
+            // 收到第一个chunk时移除思考气泡，创建回复气泡
+            messages.value = messages.value.filter(m => m.id !== thinkingMsg.id)
+            agentMsg = { role: 'agent', content: '', id: ++msgIdCounter }
+            messages.value.push(agentMsg)
+          }
           agentMsg.content += data.content
           currentTurnId = data.turn_id
           scrollDown()
         } else if (data.type === 'done') {
-          thinking.value = false
+          messages.value = messages.value.filter(m => m.id !== thinkingMsg.id)
           interrupt.value = null
         } else if (data.question) {
+          messages.value = messages.value.filter(m => m.id !== thinkingMsg.id)
           interrupt.value = data
-          thinking.value = false
         }
       } catch (e) {}
     }
   }
-  thinking.value = false
-  fileQueue.value = null
+  messages.value = messages.value.filter(m => m.id !== thinkingMsg.id)
 }
 
 async function resumeChat() {
   if (!userAnswer.value.trim()) return
   addMessage('user', userAnswer.value)
   const text = userAnswer.value; userAnswer.value = ''
-  thinking.value = true
+  scrollDown()
+
+  const thinkingMsg = { role: 'agent', content: '思考中...', thinking: true, id: ++msgIdCounter }
+  messages.value.push(thinkingMsg)
   scrollDown()
 
   const response = await resumeInterruptedChat(text, currentTurnId)
@@ -186,17 +192,21 @@ async function resumeChat() {
       try {
         const data = JSON.parse(line.slice(6))
         if (data.type === 'chunk') {
-          if (!agentMsg) { agentMsg = { role: 'agent', content: '' }; messages.value.push(agentMsg) }
+          if (!agentMsg) {
+            messages.value = messages.value.filter(m => m.id !== thinkingMsg.id)
+            agentMsg = { role: 'agent', content: '', id: ++msgIdCounter }
+            messages.value.push(agentMsg)
+          }
           agentMsg.content += data.content
           scrollDown()
         } else if (data.type === 'done') {
-          thinking.value = false
+          messages.value = messages.value.filter(m => m.id !== thinkingMsg.id)
           interrupt.value = null
         }
       } catch (e) {}
     }
   }
-  thinking.value = false
+  messages.value = messages.value.filter(m => m.id !== thinkingMsg.id)
 }
 </script>
 
@@ -211,11 +221,7 @@ async function resumeChat() {
 .msg-attach { font-size: 11px; color: #888; margin-bottom: 6px; display: flex; align-items: center; gap: 4px; padding-bottom: 6px; border-bottom: 1px solid #e0e0e0; }
 .message.user .msg-attach { color: rgba(255,255,255,0.8); border-bottom-color: rgba(255,255,255,0.3); }
 .message.user .content { background: #1976d2; color: white; }
-.thinking { color: #999; font-style: italic; }
-.thinking .dots span { animation: blink 1.4s infinite; }
-.thinking .dots span:nth-child(2) { animation-delay: 0.2s; }
-.thinking .dots span:nth-child(3) { animation-delay: 0.4s; }
-@keyframes blink { 0%,80%,100% { opacity: 0; } 40% { opacity: 1; } }
+.message.thinking .content { color: #999; font-style: italic; background: #fafafa; border: 1px dashed #e0e0e0; }
 
 /* File queue */
 .file-queue { padding: 8px 16px; background: #fafafa; border-top: 1px solid #eee; flex-shrink: 0; }
