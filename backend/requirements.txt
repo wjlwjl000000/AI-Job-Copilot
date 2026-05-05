@@ -1,0 +1,23 @@
+# Python 3.10 兼容
+fastapi>=0.120.0
+uvicorn[standard]>=0.34.0
+sqlalchemy[asyncio]>=2.0.35
+asyncpg>=0.30.0
+alembic>=1.14.0
+langchain>=1.0.0
+langchain-openai>=0.3.0
+langchain-chroma>=0.2.0
+langgraph>=1.0.0
+chromadb>=1.0.0
+pydantic>=2.10.0
+pydantic-settings>=2.7.0
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+python-multipart>=0.0.20
+httpx>=0.28.0
+pytest>=8.3.0
+pytest-asyncio>=0.25.0
+pytest-httpx>=0.35.0
+PyPDF2>=3.0.0
+python-docx>=1.1.0
+pyyaml>=6.0
