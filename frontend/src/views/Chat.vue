@@ -3,7 +3,10 @@
     <div class="messages" ref="msgContainer">
       <div v-for="msg in messages" :key="msg.id" v-memo="[msg.id]" :class="['message', msg.role]">
         <div class="avatar">{{ msg.role === 'user' ? 'U' : 'AI' }}</div>
-        <div class="content">{{ msg.content }}</div>
+        <div class="content">
+          <div v-if="msg.attachment" class="msg-attach">📄 {{ msg.attachment.name }} ({{ msg.attachment.chars }}字)</div>
+          {{ msg.content }}
+        </div>
       </div>
       <div v-if="thinking" class="message agent">
         <div class="avatar">AI</div>
@@ -62,8 +65,8 @@ let msgIdCounter = 0
 const MAX_MESSAGES = 200
 const TRIM_COUNT = 50
 
-function addMessage(role, content) {
-  messages.value.push({ role, content, id: ++msgIdCounter })
+function addMessage(role, content, attachment = null) {
+  messages.value.push({ role, content, attachment, id: ++msgIdCounter })
   if (messages.value.length > MAX_MESSAGES) {
     const trimmed = messages.value.splice(0, TRIM_COUNT)
     // 查找并移除旧的归档提示
@@ -110,20 +113,23 @@ async function sendMessage() {
   if ((!input.value.trim() && !fileQueue.value) || thinking.value) return
   if (fileQueue.value && fileQueue.value.parsing) return
 
-  let text = input.value.trim()
+  const displayText = input.value.trim() || (fileQueue.value ? '请分析我的简历' : '')
   input.value = ''
 
-  // Build message: append parsed resume text if available
-  if (fileQueue.value && fileQueue.value.text) {
-    text = text || '请分析我的简历'
-    text += `\n\n[附件简历内容]:\n${fileQueue.value.text}`
-  }
+  const attachment = fileQueue.value
+    ? { name: fileQueue.value.name, chars: fileQueue.value.charCount }
+    : null
 
-  addMessage('user', text)
+  // Display shows user's original input; send includes parsed resume text
+  const sendText = fileQueue.value?.text
+    ? `${displayText}\n\n[附件简历内容]:\n${fileQueue.value.text}`
+    : displayText
+
+  addMessage('user', displayText, attachment)
   thinking.value = true
   scrollDown()
 
-  const response = await sendChatMessage(text, currentTurnId)
+  const response = await sendChatMessage(sendText, currentTurnId)
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
@@ -202,6 +208,8 @@ async function resumeChat() {
 .message.user { flex-direction: row-reverse; }
 .avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #e0e0e0; font-size: 12px; margin: 0 8px; flex-shrink: 0; }
 .content { max-width: 70%; padding: 10px 14px; border-radius: 12px; background: #f0f0f0; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+.msg-attach { font-size: 11px; color: #888; margin-bottom: 6px; display: flex; align-items: center; gap: 4px; padding-bottom: 6px; border-bottom: 1px solid #e0e0e0; }
+.message.user .msg-attach { color: rgba(255,255,255,0.8); border-bottom-color: rgba(255,255,255,0.3); }
 .message.user .content { background: #1976d2; color: white; }
 .thinking { color: #999; font-style: italic; }
 .thinking .dots span { animation: blink 1.4s infinite; }
