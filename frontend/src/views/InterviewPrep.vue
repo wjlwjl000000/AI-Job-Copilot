@@ -1,21 +1,21 @@
 <template>
   <div class="interview">
-    <h1>Interview Preparation</h1>
+    <h1>面试备战</h1>
     <div class="setup">
-      <input v-model="jobId" placeholder="Job ID" />
-      <button @click="generate">Generate Questions</button>
-      <span v-if="generating">Generating...</span>
+      <input v-model="jobId" placeholder="输入职位ID" />
+      <button @click="generate">生成面试题</button>
+      <span v-if="generating">生成中...</span>
     </div>
     <div v-if="questions.length" class="questions">
       <div v-for="(q, i) in questions" :key="i" class="q-card">
-        <h4>Q{{ i + 1 }}: {{ q.question }}</h4>
-        <p class="tip">Focus: {{ q.focus }}</p>
-        <textarea v-model="answers[i]" placeholder="Type your answer here..." rows="3"></textarea>
-        <button @click="evaluate(i)">Evaluate</button>
+        <h4>第{{ i + 1 }}题：{{ q.question }}</h4>
+        <p class="tip">考察点：{{ q.focus }}</p>
+        <textarea v-model="answers[i]" placeholder="在这里输入你的回答..." rows="3"></textarea>
+        <button @click="evaluate(i)">提交评估</button>
         <div v-if="evals[i]" class="eval">{{ evals[i] }}</div>
       </div>
     </div>
-    <p v-else class="hint">Enter a Job ID and click Generate. Or go to <router-link to="/chat">Agent Chat</router-link> to prepare interactively.</p>
+    <p v-else class="hint">输入职位ID并点击生成面试题，或前往 <router-link to="/chat">智能对话</router-link> 进行交互式面试准备。</p>
   </div>
 </template>
 
@@ -30,7 +30,7 @@ const evals = reactive({})
 async function generate() {
   if (!jobId.value) return
   generating.value = true
-  const r = await api.sendChatMessage(`Generate interview questions for job ${jobId.value}`, null)
+  const r = await api.sendChatMessage(`为职位 ${jobId.value} 生成面试题`, null)
   const reader = r.body.getReader(), decoder = new TextDecoder(); let buf = ''
   while (true) {
     const { done, value } = await reader.read(); if (done) break
@@ -38,16 +38,15 @@ async function generate() {
     const lines = buf.split('\n'); buf = lines.pop() || ''
     for (const l of lines) {
       if (l.startsWith('data: ')) {
-        try { const d = JSON.parse(l.slice(6)); if (d.type === 'response' && d.content) questions.value = extractQuestions(d.content) } catch(e) {}
+        try { const d = JSON.parse(l.slice(6)); if (d.type === 'chunk') {} else if (d.type === 'done') { generating.value = false } } catch(e) {}
       }
     }
   }
-  generating.value = false
 }
 function extractQuestions(text) { try { return JSON.parse(text).questions || [] } catch { return [] } }
 async function evaluate(i) {
   if (!answers[i]) return
-  const r = await api.sendChatMessage(`Evaluate this interview answer for question: "${questions.value[i].question}". My answer: "${answers[i]}"`, null)
+  const r = await api.sendChatMessage(`请评估这道面试题的回答。题目："${questions.value[i].question}"，我的回答："${answers[i]}"`, null)
   const reader = r.body.getReader(), decoder = new TextDecoder(); let buf = ''
   while (true) {
     const { done, value } = await reader.read(); if (done) break
@@ -55,7 +54,7 @@ async function evaluate(i) {
     const lines = buf.split('\n'); buf = lines.pop() || ''
     for (const l of lines) {
       if (l.startsWith('data: ')) {
-        try { const d = JSON.parse(l.slice(6)); if (d.type === 'response' && d.content) evals[i] = d.content } catch(e) {}
+        try { const d = JSON.parse(l.slice(6)); if (d.type === 'chunk') { evals[i] = (evals[i] || '') + d.content } } catch(e) {}
       }
     }
   }

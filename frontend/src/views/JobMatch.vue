@@ -1,16 +1,16 @@
 <template>
   <div class="job-match">
-    <h1>Job Matching</h1>
+    <h1>职位匹配</h1>
     <div class="add-job">
-      <input v-model="title" placeholder="Job title" />
-      <input v-model="company" placeholder="Company" />
-      <textarea v-model="jd" placeholder="Paste job description here..." rows="4"></textarea>
-      <button @click="addJob">Add & Match</button>
+      <input v-model="title" placeholder="岗位名称" />
+      <input v-model="company" placeholder="公司名称" />
+      <textarea v-model="jd" placeholder="粘贴职位描述（JD）到这里..." rows="4"></textarea>
+      <button @click="addJob">添加并匹配</button>
       <p v-if="msg">{{ msg }}</p>
     </div>
     <div class="chat-link">
-      <h3>Or use Agent Chat for smart matching:</h3>
-      <router-link to="/chat" class="btn">Open Agent Chat</router-link>
+      <h3>或使用智能对话进行精准匹配：</h3>
+      <router-link to="/chat" class="btn">打开智能对话</router-link>
     </div>
   </div>
 </template>
@@ -23,8 +23,8 @@ async function addJob() {
   if (!jd.value.trim()) return
   try {
     await api.createJob({ source: 'manual', jd_content: jd.value, company: company.value, title: title.value })
-    msg.value = 'Job added! Go to Agent Chat and ask: "match me with this job"'
-  } catch(e) { msg.value = 'Failed to add job' }
+    msg.value = '职位已添加！去智能对话中说"帮我分析这个岗位的匹配度"即可。'
+  } catch(e) { msg.value = '添加失败' }
 }
 </script>
 

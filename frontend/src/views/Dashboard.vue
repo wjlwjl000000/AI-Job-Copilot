@@ -1,19 +1,19 @@
 <template>
   <div class="dashboard">
     <h1>AI Job Copilot</h1>
-    <p class="subtitle">Your intelligent job search assistant</p>
+    <p class="subtitle">你的智能求职助手</p>
     <div class="stats">
-      <div class="stat-card"><div class="num">{{ stats.total }}</div><div class="label">Total Applications</div></div>
-      <div class="stat-card"><div class="num">{{ stats.screening }}</div><div class="label">Screening</div></div>
-      <div class="stat-card"><div class="num">{{ stats.interview }}</div><div class="label">Interviews</div></div>
-      <div class="stat-card"><div class="num">{{ stats.offer }}</div><div class="label">Offers</div></div>
+      <div class="stat-card"><div class="num">{{ stats.total }}</div><div class="label">总投递数</div></div>
+      <div class="stat-card"><div class="num">{{ stats.screening }}</div><div class="label">初筛中</div></div>
+      <div class="stat-card"><div class="num">{{ stats.interview }}</div><div class="label">面试中</div></div>
+      <div class="stat-card"><div class="num">{{ stats.offer }}</div><div class="label">已获Offer</div></div>
     </div>
-    <h2>Quick Actions</h2>
+    <h2>快捷操作</h2>
     <div class="actions">
-      <router-link to="/resumes" class="action-btn">Upload Resume</router-link>
-      <router-link to="/jobs" class="action-btn">Search Jobs</router-link>
-      <router-link to="/chat" class="action-btn">Agent Chat</router-link>
-      <router-link to="/interview" class="action-btn">Interview Prep</router-link>
+      <router-link to="/resumes" class="action-btn">上传简历</router-link>
+      <router-link to="/jobs" class="action-btn">搜索职位</router-link>
+      <router-link to="/chat" class="action-btn">智能对话</router-link>
+      <router-link to="/interview" class="action-btn">面试备战</router-link>
     </div>
   </div>
 </template>
@@ -22,7 +22,7 @@
 import { ref, onMounted } from 'vue'
 import { api } from '../api'
 const stats = ref({ total: 0, screening: 0, interview: 0, offer: 0 })
-onMounted(async () => { try { stats.value = await api.getStats() } catch (e) { /* ignore */ } })
+onMounted(async () => { try { stats.value = await api.getStats() } catch (e) {} })
 </script>
 
 <style scoped>

@@ -1,16 +1,16 @@
 <template>
   <div class="support">
-    <h1>Support & Encouragement</h1>
-    <p class="sub">Everyone needs support during job hunting. Click a button to get encouragement.</p>
+    <h1>情感支持</h1>
+    <p class="sub">求职路上，每个人都需要一些鼓励。点击下方按钮获取支持。</p>
     <div class="triggers">
-      <button @click="getSupport('I feel discouraged')">Need Encouragement</button>
-      <button @click="getSupport('I just got rejected')">Got Rejected</button>
-      <button @click="getSupport('I have an interview coming up')">Interview Anxiety</button>
-      <button @click="getSupport('daily checkin')">Daily Check-in</button>
+      <button @click="getSupport('我感到有些气馁，需要鼓励')">需要鼓励</button>
+      <button @click="getSupport('我刚被拒了，有点难过')">刚被拒绝</button>
+      <button @click="getSupport('我马上要面试了，有点紧张')">面试焦虑</button>
+      <button @click="getSupport('每日签到')">每日签到</button>
     </div>
     <div v-if="messages.length" class="feed">
       <div v-for="(m, i) in messages" :key="i" class="msg">
-        <div class="role">{{ m.role === 'user' ? 'You' : 'Support' }}</div>
+        <div class="role">{{ m.role === 'user' ? '你' : '助手' }}</div>
         <div class="text">{{ m.content }}</div>
       </div>
     </div>
@@ -31,7 +31,11 @@ async function getSupport(prompt) {
     const lines = buf.split('\n'); buf = lines.pop() || ''
     for (const l of lines) {
       if (l.startsWith('data: ')) {
-        try { const d = JSON.parse(l.slice(6)); if (d.type === 'response') messages.value.push({ role: 'agent', content: d.content }) } catch(e) {}
+        try { const d = JSON.parse(l.slice(6)); if (d.type === 'chunk') {
+          const last = messages.value[messages.value.length-1]
+          if (last && last.role === 'agent') last.content += d.content
+          else messages.value.push({ role: 'agent', content: d.content })
+        }} catch(e) {}
       }
     }
   }

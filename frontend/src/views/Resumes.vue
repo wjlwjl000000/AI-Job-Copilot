@@ -1,22 +1,22 @@
 <template>
   <div class="resumes">
-    <h1>My Resumes</h1>
+    <h1>简历管理</h1>
     <div class="upload-area">
       <input type="file" ref="fileInput" @change="handleUpload" accept=".pdf,.docx,.doc,.txt" />
-      <button @click="$refs.fileInput.click()">Upload New Resume</button>
+      <button @click="$refs.fileInput.click()">上传新简历</button>
       <span v-if="msg">{{ msg }}</span>
     </div>
     <div v-if="resumes.length" class="list">
       <div v-for="r in resumes" :key="r.id" class="card">
         <div class="info">
-          <strong>{{ r.title || 'Untitled' }}</strong>
-          <span v-if="r.target_role">Target: {{ r.target_role }}</span>
-          <span v-if="r.base_version" class="badge">Base</span>
+          <strong>{{ r.title || '未命名' }}</strong>
+          <span v-if="r.target_role">目标岗位：{{ r.target_role }}</span>
+          <span v-if="r.base_version" class="badge">基础版</span>
         </div>
-        <button class="del" @click="remove(r.id)">Delete</button>
+        <button class="del" @click="remove(r.id)">删除</button>
       </div>
     </div>
-    <p v-else class="empty">No resumes yet. Upload one to get started.</p>
+    <p v-else class="empty">暂无简历，上传一份开始吧。</p>
   </div>
 </template>
 
@@ -30,7 +30,7 @@ async function handleUpload(e) {
   const file = e.target.files[0]; if (!file) return
   const fd = new FormData(); fd.append('file', file)
   const r = await api.uploadResume(fd)
-  msg.value = r.status === 'ok' ? 'Uploaded!' : 'Failed'
+  msg.value = r.status === 'ok' ? '上传成功！' : '上传失败'
   if (r.status === 'ok') { resumes.value = await api.listResumes() }
 }
 async function remove(id) { await api.deleteResume(id); resumes.value = await api.listResumes() }

@@ -1,17 +1,17 @@
 <template>
   <div class="apps">
-    <h1>Application Tracking</h1>
+    <h1>投递追踪</h1>
     <div class="add-form">
-      <input v-model="form.job_id" placeholder="Job ID" />
-      <input v-model="form.resume_id" placeholder="Resume ID (optional)" />
-      <button @click="addApp">Add Application</button>
+      <input v-model="form.job_id" placeholder="职位ID" />
+      <input v-model="form.resume_id" placeholder="简历ID（可选）" />
+      <button @click="addApp">添加投递</button>
     </div>
     <div class="kanban">
       <div v-for="col in columns" :key="col.key" class="column">
         <h3>{{ col.label }} <span class="count">{{ apps.filter(a => a.status === col.key).length }}</span></h3>
         <div v-for="app in apps.filter(a => a.status === col.key)" :key="app.id" class="card">
-          <p><strong>Job:</strong> {{ app.job_id }}</p>
-          <p class="notes">{{ app.notes || 'No notes' }}</p>
+          <p><strong>职位：</strong> {{ app.job_id }}</p>
+          <p class="notes">{{ app.notes || '无备注' }}</p>
           <select :value="app.status" @change="move(app.id, $event.target.value)">
             <option v-for="c in columns" :key="c.key" :value="c.key">{{ c.label }}</option>
           </select>
@@ -27,12 +27,12 @@ import { api } from '../api'
 const apps = ref([])
 const form = reactive({ job_id: '', resume_id: '' })
 const columns = [
-  { key: 'planned', label: 'Planned' },
-  { key: 'applied', label: 'Applied' },
-  { key: 'screening', label: 'Screening' },
-  { key: 'interview', label: 'Interview' },
-  { key: 'offer', label: 'Offer' },
-  { key: 'rejected', label: 'Rejected' },
+  { key: 'planned', label: '待投递' },
+  { key: 'applied', label: '已投递' },
+  { key: 'screening', label: '初筛中' },
+  { key: 'interview', label: '面试中' },
+  { key: 'offer', label: '已获Offer' },
+  { key: 'rejected', label: '已拒绝' },
 ]
 onMounted(async () => { try { apps.value = await api.listApplications() } catch(e) {} })
 async function addApp() {

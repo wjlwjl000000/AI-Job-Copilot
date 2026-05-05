@@ -1,23 +1,23 @@
 <template>
   <div class="registry">
-    <h1>Agent Registry</h1>
+    <h1>Agent 管理</h1>
     <div class="add-form">
-      <input v-model="newUrl" placeholder="Agent URL (e.g. http://localhost:8001)" />
-      <button @click="register">Register</button>
+      <input v-model="newUrl" placeholder="Agent 地址（例如 http://localhost:8001）" />
+      <button @click="register">注册</button>
       <span v-if="regMsg">{{ regMsg }}</span>
     </div>
     <div class="list">
       <div v-for="a in agents" :key="a.name" class="card">
         <div class="info">
           <strong>{{ a.name }}</strong>
-          <span class="sys" v-if="isSystem(a.name)">System</span>
+          <span class="sys" v-if="isSystem(a.name)">系统内置</span>
           <span class="desc" v-if="a.card?.description">{{ a.card.description?.substring(0, 80) }}</span>
         </div>
-        <button v-if="!isSystem(a.name)" @click="remove(a.name)" class="del">Remove</button>
-        <span v-else class="locked">Locked</span>
+        <button v-if="!isSystem(a.name)" @click="remove(a.name)" class="del">移除</button>
+        <span v-else class="locked">受保护</span>
       </div>
     </div>
-    <p v-if="!agents.length" class="empty">No agents registered. Add one to get started.</p>
+    <p v-if="!agents.length" class="empty">暂无注册的 Agent，添加一个开始吧。</p>
   </div>
 </template>
 
@@ -34,7 +34,7 @@ async function refresh() { try { agents.value = await api.listAgents() } catch(e
 async function register() {
   if (!newUrl.value) return
   const r = await api.registerAgent(newUrl.value)
-  regMsg.value = r.status === 'registered' ? `Registered: ${r.name}` : r.message || 'Failed'
+  regMsg.value = r.status === 'registered' ? `已注册：${r.name}` : r.message || '注册失败'
   newUrl.value = ''
   await refresh()
 }

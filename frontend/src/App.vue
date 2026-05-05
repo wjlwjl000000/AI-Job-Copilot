@@ -3,15 +3,15 @@
     <aside class="sidebar">
       <h2>AI Job Copilot</h2>
       <nav>
-        <router-link to="/">Dashboard</router-link>
-        <router-link to="/chat">Agent Chat</router-link>
-        <router-link to="/profile">Profile</router-link>
-        <router-link to="/resumes">Resumes</router-link>
-        <router-link to="/jobs">Job Match</router-link>
-        <router-link to="/applications">Applications</router-link>
-        <router-link to="/interview">Interview Prep</router-link>
-        <router-link to="/support">Support</router-link>
-        <router-link to="/agents">Agents</router-link>
+        <router-link to="/">工作台</router-link>
+        <router-link to="/chat">智能对话</router-link>
+        <router-link to="/profile">求职画像</router-link>
+        <router-link to="/resumes">简历管理</router-link>
+        <router-link to="/jobs">职位匹配</router-link>
+        <router-link to="/applications">投递追踪</router-link>
+        <router-link to="/interview">面试备战</router-link>
+        <router-link to="/support">情感支持</router-link>
+        <router-link to="/agents">Agent 管理</router-link>
       </nav>
     </aside>
     <main class="content">
@@ -22,7 +22,7 @@
 
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Microsoft YaHei', 'Segoe UI', sans-serif; background: #f5f5f5; }
 .layout { display: flex; height: 100vh; }
 .sidebar { width: 200px; background: #1a1a2e; color: white; padding: 20px; flex-shrink: 0; }
 .sidebar h2 { font-size: 16px; margin-bottom: 24px; color: #e94560; }

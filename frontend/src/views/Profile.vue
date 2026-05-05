@@ -1,26 +1,26 @@
 <template>
   <div class="profile">
-    <h1>Career Profile</h1>
+    <h1>求职画像</h1>
     <div v-if="profile.skill_tags" class="card">
-      <h3>Skills</h3>
+      <h3>技能标签</h3>
       <div class="tags">
         <span v-for="s in profile.skill_tags" :key="s.name" class="tag">{{ s.name }} {{ s.level ? `(${s.level})` : '' }}</span>
       </div>
     </div>
     <div class="grid">
-      <div class="card"><h3>Work Experience</h3><p>{{ profile.work_years || 0 }} years</p></div>
-      <div class="card"><h3>Education</h3><p>{{ profile.education?.school || 'N/A' }}</p></div>
+      <div class="card"><h3>工作年限</h3><p>{{ profile.work_years || 0 }} 年</p></div>
+      <div class="card"><h3>教育背景</h3><p>{{ profile.education?.school || '暂无' }}</p></div>
     </div>
     <div class="card" v-if="profile.scores">
-      <h3>Scores</h3>
-      <p>Competitiveness: {{ (profile.scores.competitiveness * 100).toFixed(0) }}%</p>
-      <p>Market Match: {{ (profile.scores.market_match * 100).toFixed(0) }}%</p>
-      <p>Completeness: {{ (profile.scores.completeness * 100).toFixed(0) }}%</p>
+      <h3>能力评分</h3>
+      <p>竞争力：{{ (profile.scores.competitiveness * 100).toFixed(0) }}%</p>
+      <p>市场匹配：{{ (profile.scores.market_match * 100).toFixed(0) }}%</p>
+      <p>资料完整度：{{ (profile.scores.completeness * 100).toFixed(0) }}%</p>
     </div>
     <div class="upload-section">
-      <h3>Upload Resume</h3>
+      <h3>上传简历</h3>
       <input type="file" ref="fileInput" @change="handleUpload" accept=".pdf,.docx,.doc,.txt" />
-      <button @click="$refs.fileInput.click()">Choose File</button>
+      <button @click="$refs.fileInput.click()">选择文件</button>
       <span v-if="uploadMsg">{{ uploadMsg }}</span>
     </div>
   </div>
@@ -37,7 +37,7 @@ async function handleUpload(e) {
   if (!file) return
   const fd = new FormData(); fd.append('file', file)
   const r = await api.uploadResume(fd)
-  uploadMsg.value = r.status === 'ok' ? 'Uploaded! Now describe your needs in Agent Chat.' : 'Upload failed'
+  uploadMsg.value = r.status === 'ok' ? '上传成功！去智能对话中描述你的需求吧。' : '上传失败'
 }
 </script>
 
