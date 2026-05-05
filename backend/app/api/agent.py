@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api/agent", tags=["agent"])
 
 class ChatRequest(BaseModel):
     message: str
-    turn_id: str = None
+    turn_id: str | None = None
 
 
 @router.post("/chat")

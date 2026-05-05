@@ -31,15 +31,23 @@ export const api = {
   updateApplication: (id, data) => request('PUT', `/api/applications/${id}`, data),
   getStats: () => request('GET', '/api/applications/stats'),
 
-  // Agent Chat
-  sendChatMessage: (message, turnId) => fetch(`${BASE}/api/agent/chat`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, turn_id: turnId }),
-  }),
-  resumeChat: (message, turnId) => fetch(`${BASE}/api/agent/chat/resume`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, turn_id: turnId }),
-  }),
+  // Agent Chat (strip null turn_id)
+  sendChatMessage: (message, turnId) => {
+    const body = { message }
+    if (turnId) body.turn_id = turnId
+    return fetch(`${BASE}/api/agent/chat`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  },
+  resumeChat: (message, turnId) => {
+    const body = { message }
+    if (turnId) body.turn_id = turnId
+    return fetch(`${BASE}/api/agent/chat/resume`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  },
 
   // Agent Registry
   listAgents: () => request('GET', '/api/agent/registry'),

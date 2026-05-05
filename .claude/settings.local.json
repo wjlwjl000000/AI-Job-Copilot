@@ -48,7 +48,9 @@
       "Bash(docker exec *)",
       "Bash(python -c \"import json; print\\(json.dumps\\({'message':'帮我看看后端岗位的匹配度'}\\)\\)\")",
       "Bash(python -c \"import json; print\\(json.dumps\\({'message':'帮我分析简历'}\\)\\)\")",
-      "Bash(python -c \"import json; print\\(json.dumps\\({'message':'我上传了简历文件\\(简历ID: r-1\\)，请帮我解析并分析我的技能，然后搜索适合我的职位'}\\)\\)\")"
+      "Bash(python -c \"import json; print\\(json.dumps\\({'message':'我上传了简历文件\\(简历ID: r-1\\)，请帮我解析并分析我的技能，然后搜索适合我的职位'}\\)\\)\")",
+      "Bash(python -c \"import json; print\\(json.dumps\\({'message':'hello'}\\)\\)\")",
+      "Bash(python *)"
     ]
   }
 }
