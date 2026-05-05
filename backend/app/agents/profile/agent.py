@@ -37,7 +37,7 @@ profile_agent = create_agent(
     system_prompt=PROFILE_SYSTEM_PROMPT,
     tools=_tools,
     middleware=[
-        SkillLoadingMiddleware(skills_dir="app/skills/profile/"),
+        SkillLoadingMiddleware(skills_base_dir="app/skills", skill_names=["parse-resume", "build-profile"]),
         SlidingWindowMiddleware(max_messages=20),
         ToolRetryMiddleware(max_retries=2),
     ],

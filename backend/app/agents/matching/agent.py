@@ -37,7 +37,7 @@ matching_agent = create_agent(
     system_prompt=MATCHING_SYSTEM_PROMPT,
     tools=_tools,
     middleware=[
-        SkillLoadingMiddleware(skills_dir="app/skills/matching/"),
+        SkillLoadingMiddleware(skills_base_dir="app/skills", skill_names=["match-jobs", "score-match", "optimize-resume"]),
         SlidingWindowMiddleware(max_messages=20),
         ToolRetryMiddleware(max_retries=2),
     ],

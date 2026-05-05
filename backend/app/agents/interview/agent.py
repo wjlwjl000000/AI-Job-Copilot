@@ -34,7 +34,7 @@ interview_agent = create_agent(
     system_prompt=INTERVIEW_SYSTEM_PROMPT,
     tools=[db_read, db_write, call_llm, call_support_agent],
     middleware=[
-        SkillLoadingMiddleware(skills_dir="app/skills/interview/"),
+        SkillLoadingMiddleware(skills_base_dir="app/skills", skill_names=["generate-interview-qs", "evaluate-answer"]),
         SlidingWindowMiddleware(max_messages=20),
         ToolRetryMiddleware(max_retries=2),
     ],
