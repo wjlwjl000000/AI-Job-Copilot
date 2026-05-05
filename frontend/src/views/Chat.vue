@@ -1,16 +1,16 @@
 <template>
   <div class="chat-container">
     <div class="messages" ref="msgContainer">
+      <div v-if="thinking" class="message agent">
+        <div class="avatar">AI</div>
+        <div class="content thinking">思考中<span class="dots"><span>.</span><span>.</span><span>.</span></span></div>
+      </div>
       <div v-for="msg in messages" :key="msg.id" v-memo="[msg.id]" :class="['message', msg.role]">
         <div class="avatar">{{ msg.role === 'user' ? 'U' : 'AI' }}</div>
         <div class="content">
           <div v-if="msg.attachment" class="msg-attach">📄 {{ msg.attachment.name }} ({{ msg.attachment.chars }}字)</div>
           {{ msg.content }}
         </div>
-      </div>
-      <div v-if="thinking" class="message agent">
-        <div class="avatar">AI</div>
-        <div class="content thinking">思考中<span class="dots"><span>.</span><span>.</span><span>.</span></span></div>
       </div>
     </div>
 
