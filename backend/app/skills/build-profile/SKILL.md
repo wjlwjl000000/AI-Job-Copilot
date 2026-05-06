@@ -24,10 +24,11 @@ Convert resume text and user preferences into a structured `UserProfile` persist
    - 从用户输入的简历文本或技能描述中提取信息
    - 按 references/skill-taxonomy.md 的标准将技能分级
    - 计算工作年限、整理教育背景和项目经验
+   - 如果用户提供了目标 JD 文本，提取并结构化存入 jd 字段：{content: "JD原文", requirements: [{skill, level, required}]}
    - 综合评估竞争力、市场匹配度和画像完整度
 3. **生成向量便于检索** — chroma_insert("profiles", [summary], [metadata]) 用画像摘要（技能+目标岗位+年限的简洁描述）创建向量，使下游 Matching Agent 和 Support Agent 能通过语义搜索找到该画像
 
-> 步骤2中的技能分级、年限计算、摘要生成和竞争力评分均在Agent的Thought阶段自然完成，不需要call_llm工具。
+> 步骤2中的技能分级、年限计算、摘要生成、JD解析和竞争力评分均在Agent的Thought阶段自然完成，不需要call_llm工具。
 
 ## Output Format
 ```

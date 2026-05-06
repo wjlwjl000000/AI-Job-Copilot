@@ -20,5 +20,6 @@ class UserProfile(Base):
     target: Mapped[dict] = mapped_column(JSON, default=dict)
     preference: Mapped[dict] = mapped_column(JSON, default=dict)
     scores: Mapped[dict] = mapped_column(JSON, default=dict)
+    jd: Mapped[dict] = mapped_column(JSON, nullable=True)
 
     user = relationship("User", back_populates="profile")
