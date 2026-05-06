@@ -44,10 +44,7 @@ async def agent_chat(request: ChatRequest):
                 yield f"data: {json.dumps(event['__interrupt__'], ensure_ascii=False)}\n\n"
             elif "synthesizer" in event:
                 content = event["synthesizer"].get("synthesized_response", "")
-                # 每次发送约20字符, 不用 sleep, 让 SSE 尽快推完
-                for i in range(0, len(content), 20):
-                    chunk = content[i:i+20]
-                    yield f"data: {json.dumps({'type': 'chunk', 'content': chunk, 'turn_id': turn_id}, ensure_ascii=False)}\n\n"
+                yield f"data: {json.dumps({'type': 'response', 'content': content, 'turn_id': turn_id}, ensure_ascii=False)}\n\n"
         yield f"data: {json.dumps({'type': 'done', 'turn_id': turn_id}, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")

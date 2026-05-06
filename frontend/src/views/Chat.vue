@@ -143,14 +143,9 @@ async function sendMessage() {
       if (!line.startsWith('data: ')) continue
       try {
         const data = JSON.parse(line.slice(6))
-        if (data.type === 'chunk') {
-          if (!agentMsg) {
-            // 收到第一个chunk时移除思考气泡，创建回复气泡
-            messages.value = messages.value.filter(m => m.id !== thinkingMsg.id)
-            agentMsg = { role: 'agent', content: '', id: ++msgIdCounter }
-            messages.value.push(agentMsg)
-          }
-          agentMsg.content += data.content
+        if (data.type === 'response') {
+          messages.value = messages.value.filter(m => m.id !== thinkingMsg.id)
+          addMessage('agent', data.content)
           currentTurnId = data.turn_id
           scrollDown()
         } else if (data.type === 'done') {
