@@ -8,7 +8,7 @@ app = FastAPI(title="Profile Agent")
 agent_card = create_agent_card(
     agent_id="urn:agent:copilot:profile",
     name="Profile Agent",
-    description="负责构建用户求职画像。需要：简历文本内容(必填)、目标岗位方向(可选)、用户偏好如强调技能或不生成多版本(可选)",
+    description="当用户提供了简历文本、个人技能描述、目标岗位方向、或要求构建/更新求职画像时调用。接收简历内容和目标岗位偏好，构建技能图谱、经验向量和竞争力评分。不要用于职位搜索或JD匹配场景。",
     url="http://localhost:8001",
     skills=[
         {"id": "parse-resume", "name": "简历解析", "description": "解析PDF/Word/文本简历为结构化信息", "examples": ["帮我看看我的简历"]},

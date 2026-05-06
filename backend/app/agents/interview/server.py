@@ -8,7 +8,7 @@ app = FastAPI(title="Interview Agent")
 agent_card = create_agent_card(
     agent_id="urn:agent:copilot:interview",
     name="Interview Agent",
-    description="面试备战专家。基于JD和用户弱项生成面试问题，评估回答质量。",
+    description="当用户获得面试机会、需要生成针对性面试问题或评估模拟回答时调用。需要具体JD内容和用户弱项领域。不要用于简历解析或职位搜索场景。",
     url="http://localhost:8003",
     skills=[
         {"id": "generate-interview-qs", "name": "生成面试问题", "description": "基于JD+弱项生成针对性面试题", "examples": ["帮我准备面试"]},
