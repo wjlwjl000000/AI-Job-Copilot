@@ -5,21 +5,30 @@ from app.a2a.client import A2AClient
 
 a2a_client = A2AClient()
 
-
-AGENT_PORTS = {
-    "profile-agent": 8001,
-    "matching-agent": 8002,
-    "interview-agent": 8003,
-    "support-agent": 8004,
+# Agent Card name → (Docker service name, port)
+_AGENT_MAP = {
+    "Profile Agent":   ("profile-agent", 8001),
+    "Matching Agent":  ("matching-agent", 8002),
+    "Interview Agent": ("interview-agent", 8003),
+    "Support Agent":   ("support-agent", 8004),
+    # Also accept service names directly
+    "profile-agent":   ("profile-agent", 8001),
+    "matching-agent":  ("matching-agent", 8002),
+    "interview-agent": ("interview-agent", 8003),
+    "support-agent":   ("support-agent", 8004),
 }
+
+
+def _agent_url(agent_name: str) -> str:
+    svc, port = _AGENT_MAP.get(agent_name, (agent_name, 8001))
+    return f"http://{svc}:{port}"
 
 
 async def _execute_task(task: dict, client: A2AClient) -> tuple[dict, dict | None]:
     """执行单个 A2A 任务，返回 (task_info, result_or_none)。连接失败返回 None。"""
-    port = AGENT_PORTS.get(task["agent"], 8001)
-    agent_url = f"http://{task['agent']}:{port}"
+    url = _agent_url(task["agent"])
     try:
-        result = await client.send_message(agent_url, message={
+        result = await client.send_message(url, message={
             "role": "user",
             "parts": [
                 {"type": "text", "text": f"执行任务: {task['action']}"},
@@ -55,7 +64,7 @@ async def executor_node(state: SupervisorState) -> dict:
                 "task_id": result.result.id,
             })
             continued = await a2a_client.send_message(
-                agent_url=f"http://{task['agent']}:{port}",
+                agent_url=_agent_url(task["agent"]),
                 message={
                     "role": "user",
                     "parts": [{"type": "text", "text": user_answer.get("answer", "")}],
