@@ -3,23 +3,22 @@ from langchain.agents.middleware import AgentMiddleware
 
 
 class SkillLoadingMiddleware(AgentMiddleware):
-    """按需加载 SKILL.md，填充 system_prompt 占位符 {skills_list} 和 {skill_content}"""
+    """通过 before_model 钩子注入 SKILL 内容到 system prompt。"""
 
     def __init__(self, skills_base_dir: str, skill_names: list[str]):
-        self.skills_base_dir = skills_base_dir
-        self.skill_names = skill_names
-        self._skills_meta: dict[str, dict] = {}
-        self._loaded_skills: set = set()
-        self._load_skills_metadata()
-
-    def _load_skills_metadata(self):
-        """启动时仅加载指定 SKILL 的 name + description"""
-        for name in self.skill_names:
-            filepath = os.path.join(self.skills_base_dir, name, "SKILL.md")
-            if os.path.isfile(filepath):
-                with open(filepath, "r", encoding="utf-8") as f:
+        super().__init__()
+        self._skills: dict[str, dict] = {}
+        for name in skill_names:
+            path = os.path.join(skills_base_dir, name, "SKILL.md")
+            if os.path.isfile(path):
+                with open(path, "r", encoding="utf-8") as f:
                     content = f.read()
-                self._skills_meta[name] = self._parse_frontmatter(content)
+                meta = self._parse_frontmatter(content)
+                self._skills[name] = {
+                    "name": name,
+                    "description": meta.get("description", ""),
+                    "body": meta.get("body", ""),
+                }
 
     def _parse_frontmatter(self, content: str) -> dict:
         parts = content.split("---")
@@ -33,17 +32,15 @@ class SkillLoadingMiddleware(AgentMiddleware):
         frontmatter["body"] = parts[2].strip()
         return frontmatter
 
-    def _inject_skill(self, skill_name: str) -> str:
-        if skill_name not in self._skills_meta:
-            return ""
-        self._loaded_skills.add(skill_name)
-        return self._skills_meta[skill_name].get("body", "")
+    def before_model(self, state, runtime):
+        skills_list = "\n".join([
+            f"- **{n}**: {m['description']}" for n, m in self._skills.items()
+        ])
+        skill_content = state.get("skill_content", "")
 
-    def unload_skill(self, skill_name: str):
-        self._loaded_skills.discard(skill_name)
-
-    def get_skills_list_text(self) -> str:
-        lines = []
-        for name, meta in self._skills_meta.items():
-            lines.append(f"- **{name}**: {meta.get('description', '')}")
-        return "\n".join(lines) if lines else "无"
+        msgs = state.get("messages", [])
+        for msg in msgs:
+            if hasattr(msg, "content") and isinstance(msg.content, str):
+                msg.content = msg.content.replace("{skills_list}", skills_list)
+                msg.content = msg.content.replace("{skill_content}", skill_content)
+        return None
