@@ -1,14 +1,12 @@
 import json
 from langchain_core.messages import SystemMessage, HumanMessage
 from app.agents.supervisor.state import SupervisorState
-from app.agents.supervisor import stream
 from app.tools.llm import llm
 
 
 async def synthesizer_node(state: SupervisorState) -> dict:
     results = state.get("all_results", {})
-    turn_id = state.get("_turn_id", "")
-
+    # Empty results = casual chat, respond directly to user message
     if not results or not any(v for v in results.values()):
         user_msg = state["messages"][-1].content if state["messages"] else "hello"
         prompt = (
@@ -29,11 +27,8 @@ async def synthesizer_node(state: SupervisorState) -> dict:
         )
 
     chunks = []
-    q = stream.get(turn_id)
     async for chunk in llm.astream(prompt):
         if chunk.content:
             chunks.append(chunk.content)
-            if q:
-                await q.put(chunk.content)
 
     return {"synthesized_response": "".join(chunks)}

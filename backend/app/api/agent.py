@@ -8,7 +8,6 @@ from pydantic import BaseModel
 from langgraph.types import Command
 from langchain_core.messages import HumanMessage
 from app.agents.supervisor.graph import graph
-from app.agents.supervisor import stream
 from app.a2a.registry import AgentRegistry
 from app.a2a.client import A2AClient
 
@@ -29,7 +28,6 @@ async def agent_chat(request: ChatRequest):
     initial_state = {
         "user_id": "u-default",
         "messages": [HumanMessage(content=request.message)],
-        "_turn_id": turn_id,
         "goal": "",
         "plan": [],
         "all_results": {},
@@ -41,38 +39,15 @@ async def agent_chat(request: ChatRequest):
     config = {"configurable": {"thread_id": turn_id}}
 
     async def event_stream():
-        q = stream.create(turn_id)
-        graph_done = False
-        graph_gen = graph.astream(initial_state, config, stream_mode="updates")
-
-        while True:
-            # Step 1: 排空队列中所有 chunk（Synthesizer 实时写入）
-            drained = False
-            while not q.empty():
-                try:
-                    chunk = q.get_nowait()
+        async for event in graph.astream(initial_state, config, stream_mode="updates"):
+            if "__interrupt__" in event:
+                yield f"data: {json.dumps(event['__interrupt__'], ensure_ascii=False)}\n\n"
+            elif "synthesizer" in event:
+                content = event["synthesizer"].get("synthesized_response", "")
+                # 每次发送约20字符, 不用 sleep, 让 SSE 尽快推完
+                for i in range(0, len(content), 20):
+                    chunk = content[i:i+20]
                     yield f"data: {json.dumps({'type': 'chunk', 'content': chunk, 'turn_id': turn_id}, ensure_ascii=False)}\n\n"
-                    drained = True
-                except asyncio.QueueEmpty:
-                    break
-
-            if graph_done and not drained:
-                break  # 图完成且队列已空 → 推送 done
-
-            # Step 2: 推进图一步（如果还没完成）
-            if not graph_done:
-                try:
-                    event = await asyncio.wait_for(graph_gen.__anext__(), timeout=0.15)
-                    if "__interrupt__" in event:
-                        stream.remove(turn_id)
-                        yield f"data: {json.dumps(event['__interrupt__'], ensure_ascii=False)}\n\n"
-                        return
-                    if "synthesizer" in event:
-                        graph_done = True
-                except (StopAsyncIteration, asyncio.TimeoutError):
-                    pass  # 图还在跑 LLM 或已完成
-
-        stream.remove(turn_id)
         yield f"data: {json.dumps({'type': 'done', 'turn_id': turn_id}, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
@@ -80,37 +55,18 @@ async def agent_chat(request: ChatRequest):
 
 @router.post("/chat/resume")
 async def resume_chat(request: ChatRequest):
-    turn_id = request.turn_id
-    config = {"configurable": {"thread_id": turn_id}}
+    config = {"configurable": {"thread_id": request.turn_id}}
 
     async def event_stream():
-        q = stream.create(turn_id)
-        graph_done = False
-        graph_gen = graph.astream(Command(resume={"answer": request.message}), config, stream_mode="updates")
-
-        while True:
-            drained = False
-            while not q.empty():
-                try:
-                    chunk = q.get_nowait()
-                    yield f"data: {json.dumps({'type': 'chunk', 'content': chunk, 'turn_id': turn_id}, ensure_ascii=False)}\n\n"
-                    drained = True
-                except asyncio.QueueEmpty:
-                    break
-
-            if graph_done and not drained:
-                break
-
-            if not graph_done:
-                try:
-                    event = await asyncio.wait_for(graph_gen.__anext__(), timeout=0.15)
-                    if "synthesizer" in event:
-                        graph_done = True
-                except (StopAsyncIteration, asyncio.TimeoutError):
-                    pass
-
-        stream.remove(turn_id)
-        yield f"data: {json.dumps({'type': 'done', 'turn_id': turn_id}, ensure_ascii=False)}\n\n"
+        async for event in graph.astream(
+            Command(resume={"answer": request.message}),
+            config,
+            stream_mode="updates",
+        ):
+            if "synthesizer" in event:
+                content = event["synthesizer"].get("synthesized_response", "")
+                yield f"data: {json.dumps({'type': 'response', 'content': content}, ensure_ascii=False)}\n\n"
+        yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
