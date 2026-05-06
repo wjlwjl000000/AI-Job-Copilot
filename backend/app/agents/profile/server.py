@@ -30,12 +30,14 @@ async def handle_task(request):
             data.update(p.get("content", {}))
     prompt = f"{text}\n任务数据: {data}" if data else text
     result = await profile_agent.ainvoke({"messages": [HumanMessage(content=prompt)]})
+    ai_msgs = [m for m in result.get("messages", []) if getattr(m, "type", "") == "ai"]
+    answer = ai_msgs[-1].content if ai_msgs else str(result)
     return JsonRpcResponse(
         id=request.id,
         result=TaskResult(
             id="task-profile",
             status=TaskStatus(state="completed"),
-            artifacts=[TaskArtifact(content={"result": str(result)})],
+            artifacts=[TaskArtifact(content={"result": answer})],
         ),
     )
 

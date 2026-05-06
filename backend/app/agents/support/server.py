@@ -24,12 +24,14 @@ async def handle_task(request):
     msg_parts = request.params["message"]["parts"]
     text = " ".join([p.get("text", "") for p in msg_parts if p["type"] == "text"])
     result = await support_agent.ainvoke({"messages": [HumanMessage(content=text)]})
+    ai_msgs = [m for m in result.get("messages", []) if getattr(m, "type", "") == "ai"]
+    answer = ai_msgs[-1].content if ai_msgs else str(result)
     return JsonRpcResponse(
         id=request.id,
         result=TaskResult(
             id="task-support",
             status=TaskStatus(state="completed"),
-            artifacts=[TaskArtifact(content={"result": str(result)})],
+            artifacts=[TaskArtifact(content={"result": answer})],
         ),
     )
 

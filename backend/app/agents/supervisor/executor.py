@@ -42,7 +42,7 @@ async def _execute_task(task: dict, client: A2AClient) -> tuple[dict, dict | Non
 
 async def executor_node(state: SupervisorState) -> dict:
     """并行 A2A 执行 Plan。input-required → interrupt() 挂起，completed → 收集 result。"""
-    pending = [t for t in state["plan"] if t["agent"] not in state["all_results"]]
+    pending = [t for t in state["plan"] if t.get("task_id", t["agent"]) not in state["all_results"]]
 
     if not pending:
         return {"all_results": state["all_results"]}
@@ -52,9 +52,9 @@ async def executor_node(state: SupervisorState) -> dict:
     for coro in asyncio.as_completed(running):
         task, result = await coro
 
+        tid = task.get("task_id", task["agent"])
         if result is None:
-            # Sub-Agent 不可用（DNS/网络错误），标记为失败继续
-            state["all_results"][task["agent"]] = [{"error": "agent_unavailable"}]
+            state["all_results"][tid] = [{"error": "agent_unavailable"}]
             continue
 
         if result.result and result.result.status.state == "input-required":
@@ -72,12 +72,14 @@ async def executor_node(state: SupervisorState) -> dict:
                 task_id=result.result.id,
             )
             if continued.result and continued.result.artifacts:
-                state["all_results"][task["agent"]] = [a.content for a in continued.result.artifacts]
+                state["all_results"][tid] = [a.content for a in continued.result.artifacts]
+            task["data"] = {}
         elif result.result and result.result.status.state == "completed":
             if result.result.artifacts:
-                state["all_results"][task["agent"]] = [a.content for a in result.result.artifacts]
+                state["all_results"][tid] = [a.content for a in result.result.artifacts]
             else:
-                state["all_results"][task["agent"]] = []
+                state["all_results"][tid] = []
+            task["data"] = {}
 
     # 全部 Agent 不可用时跳过 Replanner，直接让 Synthesizer 回复
     all_failed = all(

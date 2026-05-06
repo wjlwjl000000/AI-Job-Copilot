@@ -35,7 +35,7 @@ PLANNER_PROMPT = """你是 Supervisor。根据用户意图和 Agent 描述生成
 {agent_cards}
 
 输出格式:
-{{"tasks": [{{"agent": "...", "action": "...", "data": {{...}}, "depends_on": []}}]}}"""
+{{"tasks": [{{"task_id": "t1", "agent": "...", "action": "...", "data": {{...}}, "depends_on": []}}]}}"""
 
 
 def planner_node(state: SupervisorState) -> dict:
@@ -61,8 +61,13 @@ def planner_node(state: SupervisorState) -> dict:
     except json.JSONDecodeError:
         plan_data = {"tasks": []}
 
+    tasks = plan_data.get("tasks", [])
+    for i, t in enumerate(tasks):
+        if "task_id" not in t:
+            t["task_id"] = f"task_{i+1}"
+
     return {
-        "plan": plan_data.get("tasks", []),
+        "plan": tasks,
         "goal": user_msg,
         "loop_count": 0,
         "max_loops": 3,
