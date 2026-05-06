@@ -2,18 +2,23 @@ import json
 from langchain_core.messages import SystemMessage, HumanMessage
 from app.agents.supervisor.state import SupervisorState
 from app.tools.llm import llm
+from app.a2a.registry import AgentRegistry
+from app.a2a.client import A2AClient
 
+registry = AgentRegistry(client=A2AClient())
+_registry_loaded = False
+AGENT_URLS = [
+    "http://profile-agent:8001",
+    "http://matching-agent:8002",
+    "http://interview-agent:8003",
+    "http://support-agent:8004",
+]
 
-class DummyRegistry:
-    def get_all_summaries(self) -> list[dict]:
-        return [
-            {"name": "profile-agent", "description": "解析简历、构建画像", "skills": []},
-            {"name": "matching-agent", "description": "职位匹配、评分、优化", "skills": []},
-            {"name": "interview-agent", "description": "面试问题生成、回答评估", "skills": []},
-        ]
-
-
-registry = DummyRegistry()
+async def _ensure_registry():
+    global _registry_loaded
+    if not _registry_loaded:
+        await registry.discover(AGENT_URLS)
+        _registry_loaded = True
 
 PLANNER_PROMPT = """你是 Supervisor。根据用户意图和 Agent 描述生成执行计划。输出纯 JSON（不要markdown代码块）。
 
@@ -34,6 +39,14 @@ PLANNER_PROMPT = """你是 Supervisor。根据用户意图和 Agent 描述生成
 
 
 def planner_node(state: SupervisorState) -> dict:
+    global _registry_loaded
+    if not _registry_loaded:
+        import asyncio
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+        loop.run_until_complete(_ensure_registry())
     agent_cards = registry.get_all_summaries()
     prompt = PLANNER_PROMPT.format(agent_cards=json.dumps(agent_cards, ensure_ascii=False))
     user_msg = state["messages"][-1].content if state["messages"] else ""
