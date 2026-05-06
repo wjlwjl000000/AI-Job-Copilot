@@ -28,7 +28,7 @@ def _build_skills_list(base_dir: str, names: list[str]) -> str:
     return "\n".join(lines)
 
 
-_sl = _build_skills_list("app/skills", ["parse-resume", "build-profile"])
+_sl = _build_skills_list("app/skills", ["build-profile"])
 _profile_prompt = f"你是简历与画像专家。Think→Act→Observe。技能: {_sl}。加载技能用load_skill,无工具用react,缺信息返回input-required,全部完成输出Final Answer。"
 
 profile_agent = create_agent(
