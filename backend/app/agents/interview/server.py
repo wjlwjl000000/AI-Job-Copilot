@@ -24,7 +24,12 @@ async def handle_task(request):
     from langchain_core.messages import HumanMessage
     msg_parts = request.params["message"]["parts"]
     text = " ".join([p.get("text", "") for p in msg_parts if p["type"] == "text"])
-    result = await interview_agent.ainvoke({"messages": [HumanMessage(content=text)]})
+    data = {}
+    for p in msg_parts:
+        if p["type"] == "application/json":
+            data.update(p.get("content", {}))
+    prompt = f"{text}\n任务数据: {data}" if data else text
+    result = await interview_agent.ainvoke({"messages": [HumanMessage(content=prompt)]})
     return JsonRpcResponse(
         id=request.id,
         result=TaskResult(

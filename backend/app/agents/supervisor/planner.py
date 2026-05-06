@@ -15,20 +15,21 @@ class DummyRegistry:
 
 registry = DummyRegistry()
 
-PLANNER_PROMPT = """你是 Supervisor。根据用户意图生成执行计划，输出纯 JSON（不要markdown代码块）。
+PLANNER_PROMPT = """你是 Supervisor。根据用户意图和 Agent 描述，生成执行计划。输出纯 JSON（不要markdown代码块）。
 
 规则:
-- 如果用户的消息是闲聊、问候、感谢或无明确求职需求 → 返回空计划 {{"tasks": []}}
-- 只有当用户明确表达了求职相关需求时，才生成任务
+- 每个 Agent 的 description 说明了它的能力与所需信息范围
+- 从用户消息中提取关键信息，按各 Agent 描述分配到 data 字段
+- 只给 Agent 它需要的信息，不传无关内容
+- 闲聊/问候 → tasks: []
 - 识别任务依赖：如果用户说'先X再Y'，Y应标记 depends_on=[X所在的agent]
 - 不要自动追加用户未请求的任务（软连接原则）
-- 每个任务的 agent 必须是可用 Agent 列表中的名称
 
-可用 Agent:
+可用 Agent（含能力与所需信息描述）:
 {agent_cards}
 
 输出格式:
-{{"tasks": [{{"agent": "...", "action": "...", "data": {{}}, "depends_on": []}}]}}"""
+{{"tasks": [{{"agent": "...", "action": "...", "data": {{...}}, "depends_on": []}}]}}"""
 
 
 def planner_node(state: SupervisorState) -> dict:

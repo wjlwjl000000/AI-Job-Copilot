@@ -8,7 +8,7 @@ app = FastAPI(title="Profile Agent")
 agent_card = create_agent_card(
     agent_id="urn:agent:copilot:profile",
     name="Profile Agent",
-    description="负责解析简历文件和构建用户求职画像。当用户上传简历、需要更新个人资料时调用。",
+    description="负责构建用户求职画像。需要：简历文本内容(必填)、目标岗位方向(可选)、用户偏好如强调技能或不生成多版本(可选)",
     url="http://localhost:8001",
     skills=[
         {"id": "parse-resume", "name": "简历解析", "description": "解析PDF/Word/文本简历为结构化信息", "examples": ["帮我看看我的简历"]},
@@ -24,7 +24,12 @@ async def handle_task(request):
     from langchain_core.messages import HumanMessage
     msg_parts = request.params["message"]["parts"]
     text = " ".join([p.get("text", "") for p in msg_parts if p["type"] == "text"])
-    result = await profile_agent.ainvoke({"messages": [HumanMessage(content=text)]})
+    data = {}
+    for p in msg_parts:
+        if p["type"] == "application/json":
+            data.update(p.get("content", {}))
+    prompt = f"{text}\n任务数据: {data}" if data else text
+    result = await profile_agent.ainvoke({"messages": [HumanMessage(content=prompt)]})
     return JsonRpcResponse(
         id=request.id,
         result=TaskResult(
