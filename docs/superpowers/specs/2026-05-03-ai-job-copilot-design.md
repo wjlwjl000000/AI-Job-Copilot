@@ -640,6 +640,9 @@ matching_agent = create_agent(
 | `chroma_insert` | 写入向量到 Chroma | Profile |
 | `web_search` | 搜索外部信息（职位/公司） | Matching |
 | `call_support_agent` | A2A 调用 Support Agent | Profile, Matching, Interview |
+| `read_qa_queue` | 读面试问答队列 | Interview |
+| `react` | ReAct 思考循环占位 | 全部 Agent |
+| `load_skill` | 按需加载 SKILL 完整内容 | 全部 Agent |
 
 ### SKILL（业务资源层，.md 文件）
 
@@ -893,9 +896,10 @@ Application (投递记录)
 
 Interview (面试记录)
   application_id → Application
-  questions: jsonb       # [{question, answer, feedback}, ...]
+  questions: jsonb       # [{"id":"q1","question":"...","type":"project_deep_dive","focus":"...","tips":"...","answer":null,"feedback":null}, ...]
   overall_feedback: text
   weaknesses: jsonb      # [{topic, suggestion}, ...]
+  status: str            # "in_progress" | "completed"
 
 ExperienceStory (经历故事)
   tags: jsonb            # {industry, role, years, outcome}
@@ -941,7 +945,8 @@ ExperienceStory (经历故事)
 - `GET /api/applications/stats` — 统计数据
 
 #### 面试
-- `GET /api/interviews/{id}` — 面试记录详情
+- `GET /api/interviews/{id}` — 面试记录详情（含完整 Q&A 队列）
+- `PUT /api/interviews/{id}/questions/{qid}` — 提交单个问题的回答
 
 ### A2A 端点（标准协议）
 

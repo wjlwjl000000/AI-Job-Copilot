@@ -20,3 +20,22 @@ def load_skill(skill_name: str) -> str:
     parts = content.split("---")
     body = parts[2].strip() if len(parts) >= 3 else content
     return f"=== {skill_name} 工作流 ===\n{body}"
+
+
+@tool
+async def read_qa_queue(interview_id: str) -> str:
+    """读取指定面试记录 questions 字段中所有 Q&A 内容。供 generate-interview-qs 和 evaluate-answer 使用。"""
+    from app.tools.database import db_read
+    rows = await db_read.ainvoke({"table": "interviews", "filters": {"id": interview_id}})
+    if not rows:
+        return f"Interview '{interview_id}' 不存在。"
+    questions = rows[0].get("questions", [])
+    if not questions:
+        return "该面试记录暂无问题。"
+    result = []
+    for q in questions:
+        qid = q.get("id", "?")
+        question = q.get("question", "")
+        answer = q.get("answer") or "(未回答)"
+        result.append(f"[{qid}] Q: {question}\n    A: {answer}")
+    return "\n\n".join(result)
