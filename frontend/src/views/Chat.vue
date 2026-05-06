@@ -124,7 +124,7 @@ async function sendMessage() {
   addMessage('user', displayText, attachment)
   fileQueue.value = null  // 立即清除附件队列
 
-  const thinkingMsg = { role: 'agent', content: '思考中...', thinking: true, id: ++msgIdCounter }
+  const thinkingMsg = { role: 'agent', content: '思考中', thinking: true, id: ++msgIdCounter }
   messages.value.push(thinkingMsg)
   scrollDown()
 
@@ -172,7 +172,7 @@ async function resumeChat() {
   const text = userAnswer.value; userAnswer.value = ''
   scrollDown()
 
-  const thinkingMsg = { role: 'agent', content: '思考中...', thinking: true, id: ++msgIdCounter }
+  const thinkingMsg = { role: 'agent', content: '思考中', thinking: true, id: ++msgIdCounter }
   messages.value.push(thinkingMsg)
   scrollDown()
 
@@ -222,6 +222,8 @@ async function resumeChat() {
 .message.user .msg-attach { color: rgba(255,255,255,0.8); border-bottom-color: rgba(255,255,255,0.3); }
 .message.user .content { background: #1976d2; color: white; }
 .message.thinking .content { color: #999; font-style: italic; background: #fafafa; border: 1px dashed #e0e0e0; }
+.message.thinking .content::after { content: '...'; animation: thinkDots 1.5s steps(4, end) infinite; }
+@keyframes thinkDots { 0% { content: '.'; } 25% { content: '..'; } 50% { content: '...'; } 75% { content: '....'; } }
 
 /* File queue */
 .file-queue { padding: 8px 16px; background: #fafafa; border-top: 1px solid #eee; flex-shrink: 0; }
