@@ -8,7 +8,7 @@ app = FastAPI(title="Matching Agent")
 agent_card = create_agent_card(
     agent_id="urn:agent:copilot:matching",
     name="Matching Agent",
-    description="当用户画像已构建完成，需要搜索匹配职位、评估简历与具体JD的匹配分数、或针对已有JD优化简历内容时调用。需要已有的profile_id和JD内容。不要用于首次构建画像或单纯的技能描述场景。",
+    description="当用户画像已构建完成，需要语义搜索匹配职位、评估简历与JD的多维度匹配分数、或针对已有JD优化简历内容时调用。需要已有的profile_id和JD内容（或JD搜索条件）。不要用于首次构建画像、单纯的技能描述、面试准备场景。",
     url="http://localhost:8002",
     skills=[
         {"id": "match-jobs", "name": "职位匹配搜索", "description": "基于用户画像向量在Chroma中语义搜索匹配的职位", "examples": ["帮我搜搜适合我的职位"]},

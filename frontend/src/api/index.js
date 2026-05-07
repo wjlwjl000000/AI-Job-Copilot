@@ -1,7 +1,15 @@
+import { getClientId } from '../utils/clientId'
+
 const BASE = 'http://localhost:8080'
 
 async function request(method, path, body) {
-  const opts = { method, headers: { 'Content-Type': 'application/json' } }
+  const opts = {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      'x-client-id': getClientId(),
+    },
+  }
   if (body) opts.body = JSON.stringify(body)
   const r = await fetch(`${BASE}${path}`, opts)
   return r.json()
@@ -31,20 +39,35 @@ export const api = {
   updateApplication: (id, data) => request('PUT', `/api/applications/${id}`, data),
   getStats: () => request('GET', '/api/applications/stats'),
 
-  // Agent Chat (strip null turn_id)
-  sendChatMessage: (message, turnId) => {
+  // Sessions
+  getSessions: () => request('GET', '/api/sessions'),
+  createSession: (title) => request('POST', '/api/sessions', title ? { title } : {}),
+  deleteSession: (id) => request('DELETE', `/api/sessions/${id}`),
+  updateSession: (id, title) => request('PATCH', `/api/sessions/${id}`, { title }),
+  getMessages: (sessionId) => request('GET', `/api/sessions/${sessionId}/messages`),
+
+  // Agent Chat
+  sendChatMessage: (message, sessionId) => {
     const body = { message }
-    if (turnId) body.turn_id = turnId
+    if (sessionId) body.session_id = sessionId
     return fetch(`${BASE}/api/agent/chat`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-client-id': getClientId(),
+      },
       body: JSON.stringify(body),
     })
   },
-  resumeChat: (message, turnId) => {
+  resumeChat: (message, sessionId) => {
     const body = { message }
-    if (turnId) body.turn_id = turnId
+    if (sessionId) body.session_id = sessionId
     return fetch(`${BASE}/api/agent/chat/resume`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-client-id': getClientId(),
+      },
       body: JSON.stringify(body),
     })
   },

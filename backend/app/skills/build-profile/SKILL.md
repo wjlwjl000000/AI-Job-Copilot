@@ -48,3 +48,76 @@ Convert resume text and user preferences into a structured `UserProfile` persist
 - All skills graded as "中级" → use taxonomy in `references/skill-taxonomy.md`
 - Omitting scores field → required by downstream agents
 - db_read returned an existing profile but directly overwritten without merging → check before writing
+
+## Data Models
+
+### user_profiles（读/写）
+| 字段 | 类型 | 含义 |
+|------|------|------|
+| id | UUID | 画像唯一ID |
+| user_id | UUID | 所属用户ID |
+| skill_tags | JSON | 技能标签列表：[{name, level: "初级|中级|高级|专家"}] |
+| work_years | INT | 工作年限 |
+| education | JSON | 学历信息：{degree, school, major} |
+| projects | JSON | 项目经验：[{name, description, tech_stack}] |
+| target | JSON | 求职目标：{cities, salary_range, industry, roles} |
+| preference | JSON | 用户偏好设置 |
+| jd | JSON | 目标JD：{content: "JD原文", requirements: [{skill, level, required}]} |
+| scores | JSON | 竞争力评分：{competitiveness, market_match, completeness} 均为0-1 |
+
+## Examples
+
+### 示例1：首次上传简历构建画像
+**场景**：用户上传了一份简历文件，尚未有画像记录。
+
+**工具调用序列**：
+1. db_read("user_profiles") → []（确认无已有画像）
+
+2. db_write("user_profiles", {
+     "user_id": "u-default",
+     "skill_tags": [
+       {"name": "Python", "level": "高级"},
+       {"name": "FastAPI", "level": "中级"},
+       {"name": "PostgreSQL", "level": "中级"},
+       {"name": "Docker", "level": "初级"}
+     ],
+     "work_years": 4,
+     "education": {"degree": "本科", "school": "XX大学", "major": "计算机科学"},
+     "projects": [
+       {"name": "智能客服系统", "description": "基于LangChain的RAG客服机器人", "tech_stack": ["Python", "LangChain", "FAISS"]}
+     ],
+     "target": {"cities": ["北京", "杭州"], "salary_range": "25k-35k", "industry": "AI应用", "roles": ["AI工程师", "后端开发"]},
+     "scores": {"competitiveness": 0.72, "market_match": 0.65, "completeness": 0.80}
+   })
+   → {"id": "prof-abc123"}
+
+3. chroma_insert("profiles", ["4年Python后端开发，目标AI工程师/后端开发，技能：Python(高级) FastAPI(中级) PostgreSQL(中级) Docker(初级)"], [{"profile_id": "prof-abc123"}])
+   → {"ids": ["vec-001"]}
+
+**最终输出**：
+{
+  "profile_id": "prof-abc123",
+  "skill_tags": [{"name": "Python", "level": "高级"}, ...],
+  "work_years": 4,
+  "scores": {"competitiveness": 0.72, "market_match": 0.65, "completeness": 0.80}
+}
+
+### 示例2：已有画像时基于新输入更新
+**场景**：用户之前构建过画像，说"我又学了Rust，目标换成后端开发"。
+
+**工具调用序列**：
+1. db_read("user_profiles") → [{"id": "prof-abc123", "skill_tags": [...], "target": {...}, ...}]（已有画像，需基于新输入更新）
+
+2. db_write("user_profiles", {
+     "id": "prof-abc123",
+     "skill_tags": [...原有技能..., {"name": "Rust", "level": "初级"}],
+     "target": {...原有target..., "roles": ["后端开发"]},
+     "scores": {"competitiveness": 0.75, "market_match": 0.68, "completeness": 0.85}
+   })
+   → {"id": "prof-abc123"}
+
+3. chroma_insert("profiles", ["更新摘要..."], [{"profile_id": "prof-abc123"}])
+
+**最终输出**：合并后的完整画像（新增Rust技能，目标岗位已更新）
+
+> 示例中的字段值来自db_read返回的实际数据或用户输入。步骤中标注"在Thought中..."的部分由Agent基于已有数据推理，不得凭空构造字段值。

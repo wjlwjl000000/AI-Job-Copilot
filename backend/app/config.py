@@ -7,9 +7,12 @@ class Settings(BaseSettings):
     secret_key: str = "dev-secret-key-change-in-prod"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
-    # openai_api_key: str = "sk-AfFjOyI0IT8ZELF7mXMQ3voviAIwDYaGvoJnxfpGOcJpXWAj"
-    openai_api_key: str = "sk-qii5tHmGIASrA2oJYsJTxZL9Ona7tu3PfLW6ho16oiMWdFMm"
+    openai_api_key: str = "sk-AfFjOyI0IT8ZELF7mXMQ3voviAIwDYaGvoJnxfpGOcJpXWAj"
+    # openai_api_key: str = "sk-qii5tHmGIASrA2oJYsJTxZL9Ona7tu3PfLW6ho16oiMWdFMm"
     openai_base_url: str = "https://api.chatanywhere.tech"
+    # openai_api_key: str = "773ff13aef75419cac24d45d46d2f7bd.AwbYK5YZelsb9tah"
+    # openai_base_url: str = "https://open.bigmodel.cn/api/paas/v4/"
+    # openai_model: str = "glm-4-flash"
     openai_model: str = "gpt-5-mini"
 
     class Config:

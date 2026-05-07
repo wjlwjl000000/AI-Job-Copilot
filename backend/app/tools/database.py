@@ -1,5 +1,5 @@
 from langchain_core.tools import tool
-from sqlalchemy import text
+from sqlalchemy import text, True_
 from app.database import async_session
 
 

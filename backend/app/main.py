@@ -1,7 +1,7 @@
 import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import auth, agent, profile, resumes, jobs, applications, interviews
+from app.api import auth, agent, profile, resumes, jobs, applications, interviews, session
 
 AGENT_URLS = [
     "http://profile-agent:8001",
@@ -25,6 +25,7 @@ app.include_router(resumes.router)
 app.include_router(jobs.router)
 app.include_router(applications.router)
 app.include_router(interviews.router)
+app.include_router(session.router)
 
 
 @app.get("/health")

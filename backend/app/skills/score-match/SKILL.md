@@ -49,3 +49,55 @@ Multi-dimensional evaluation of resume-to-JD match across skills, experience, ed
 - Scoring without cross-referencing jd.requirements → must compare each requirement
 - Missing call_support_agent when score < 0.6 → low match triggers encouragement
 - JD not in user_profiles.jd → check this field, not jobs table
+
+## Data Models
+
+### user_profiles（读）
+| 字段 | 类型 | 含义 |
+|------|------|------|
+| skill_tags | JSON | 技能标签：[{name, level}] |
+| work_years | INT | 工作年限 |
+| education | JSON | 学历：{degree, school, major} |
+| target | JSON | 期望：{salary_range} |
+| jd | JSON | 目标JD：{content: "JD原文", requirements: [{skill, level, required}]} |
+
+## Examples
+
+### 示例1：完整多维匹配评分
+**场景**：用户问"我和XX科技的AI工程师岗位匹配吗"，profile.jd中已有该JD。
+
+**工具调用序列**：
+1. db_read("user_profiles") → [{skill_tags: [{"name": "Python","level": "高级"},{"name": "FastAPI","level": "中级"},{"name": "Docker","level": "初级"}], work_years: 4, education: {degree: "本科", major: "计算机科学"}, target: {salary_range: "25k-35k"}, jd: {content: "JD原文...", requirements: [{"skill": "Python","level": "高级","required": true},{"skill": "FastAPI","level": "中级","required": true},{"skill": "Kubernetes","level": "中级","required": false}]}}]
+
+2. 在Thought中逐维度评分（不调用额外工具，所有数据来自步骤1返回值）：
+   - 技能重合度：3项中匹配2项(Python/FastAPI)，缺Kubernetes（非必须项，权重降低）→ 0.78
+   - 经验匹配度：JD隐含要求3-5年，用户4年 → 0.85
+   - 学历匹配度：JD要求本科，用户本科 → 1.0
+   - 薪资匹配度：JD范围20k-35k，用户期望25k-35k → 0.90
+   - overall加权平均 → 0.73（>0.6，不触发call_support_agent）
+
+**最终输出**：
+{
+  "overall": 0.73,
+  "skill_match": 0.78,
+  "experience_match": 0.85,
+  "education_match": 1.0,
+  "salary_match": 0.90,
+  "strengths": ["Python/FastAPI与JD要求匹配", "学历符合", "经验年限在范围内"],
+  "gaps": ["缺少Kubernetes经验（非必须项）"],
+  "suggestions": ["Kubernetes是加分项，建议2周内通过在线课程补上基础概念并在简历中体现"]
+}
+
+### 示例2：低匹配度触发鼓励
+**场景**：用户问"我和这个高级架构师岗位匹配吗"，差距较大。
+
+**工具调用序列**：
+1. db_read("user_profiles") → [{skill_tags: [{"name": "Python","level": "中级"}], work_years: 2, jd: {requirements: [{"skill": "系统架构设计","level": "专家","required": true},{"skill": "团队管理","level": "高级","required": true}]}}]
+
+2. 在Thought中逐维度评分 → overall=0.32，严重低于0.6
+
+3. call_support_agent(trigger="low_match", context={overall: 0.32, target_role: "高级架构师", key_gap: "经验年限和架构设计能力"}) → {story: "...", encouragement: "...", source: "user_contributed"}
+
+**最终输出**：{overall: 0.32, ..., gaps: ["经验年限差距大(2年 vs 8年要求)", "缺少架构设计经验"], suggestions: ["建议先从高级工程师入手，积累2-3年后再冲击架构师"], encouragement: {story: "...", encouragement: "之前有位2年经验的候选人从高级工程师做起，2年后成功晋升架构师...", source: "user_contributed"}}
+
+> 示例中的字段值来自db_read和call_support_agent返回的实际数据。评分在Thought阶段完成，无需额外工具。overall<0.6必须调用call_support_agent。
