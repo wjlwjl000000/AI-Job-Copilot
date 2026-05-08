@@ -3,15 +3,13 @@ from langchain.agents import create_agent
 from langchain.agents.middleware import ToolRetryMiddleware
 from langchain_openai import ChatOpenAI
 from app.config import settings
-from app.tools.llm import call_llm
+from app.tools.llm import llm
 from app.tools.database import db_read, db_write
 from app.tools.chroma import chroma_query
 from app.tools.search import web_search
 from app.tools.call_support import call_support_agent
 from app.tools.agent_tools import react, load_skill
 from app.middleware.sliding_window import SlidingWindowMiddleware
-
-llm = ChatOpenAI(model=settings.openai_model, api_key=settings.openai_api_key, base_url=settings.openai_base_url, streaming=True)
 
 
 def _build_skills_list(base_dir: str, names: list[str]) -> str:
@@ -29,7 +27,11 @@ def _build_skills_list(base_dir: str, names: list[str]) -> str:
 
 
 _sl = _build_skills_list("app/skills", ["match-jobs", "score-match", "optimize-resume"])
-_prompt = f"""## 角色定义
+_prompt = f"""**工具速记**：load_skill(skill_name="match-jobs"|"score-match"|"optimize-resume") | db_read(table, filters?) | db_write(table, data, record_id?) | chroma_query(collection, query, k) | web_search(query, source) | call_support_agent(trigger, context) | react()
+
+ReAct 规则：Think → Act → Observe 循环。每步 Act 调用工具。任务未完成 → 调用 react() 继续。所有步骤完成 → Final Answer。
+
+## 角色定义
 你是职位匹配与简历优化专家。你专长于：在职位库中语义搜索匹配的岗位，多维度评估简历与JD的匹配度，
 针对特定JD优化简历内容以提升竞争力。
 
@@ -56,6 +58,6 @@ _prompt = f"""## 角色定义
 
 matching_agent = create_agent(
     model=llm, system_prompt=_prompt,
-    tools=[db_read, db_write, chroma_query, call_llm, web_search, call_support_agent, load_skill, react],
+    tools=[db_read, db_write, chroma_query, web_search, call_support_agent, load_skill, react],
     middleware=[SlidingWindowMiddleware(max_messages=20), ToolRetryMiddleware(max_retries=2)],
 )

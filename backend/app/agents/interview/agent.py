@@ -3,13 +3,11 @@ from langchain.agents import create_agent
 from langchain.agents.middleware import ToolRetryMiddleware
 from langchain_openai import ChatOpenAI
 from app.config import settings
-from app.tools.llm import call_llm
+from app.tools.llm import llm
 from app.tools.database import db_read, db_write
 from app.tools.call_support import call_support_agent
 from app.tools.agent_tools import react, load_skill, read_qa_queue
 from app.middleware.sliding_window import SlidingWindowMiddleware
-
-llm = ChatOpenAI(model=settings.openai_model, api_key=settings.openai_api_key, base_url=settings.openai_base_url, streaming=True)
 
 
 def _build_skills_list(base_dir: str, names: list[str]) -> str:
@@ -27,7 +25,11 @@ def _build_skills_list(base_dir: str, names: list[str]) -> str:
 
 
 _sl = _build_skills_list("app/skills", ["generate-interview-qs", "evaluate-answer"])
-_prompt = f"""## 角色定义
+_prompt = f"""**工具速记**：load_skill(skill_name="generate-interview-qs"|"evaluate-answer") | db_read(table, filters?) | db_write(table, data, record_id?) | read_qa_queue(interview_id) | react()
+
+ReAct 规则：Think → Act → Observe 循环。每步 Act 调用工具。任务未完成 → 调用 react() 继续。所有步骤完成 → Final Answer。
+
+## 角色定义
 你是面试备战专家。你专长于：基于JD和用户弱项生成针对性的面试问题，评估用户的模拟面试回答质量，
 提供具体的改进建议。
 
@@ -55,6 +57,6 @@ _prompt = f"""## 角色定义
 
 interview_agent = create_agent(
     model=llm, system_prompt=_prompt,
-    tools=[db_read, db_write, call_llm, call_support_agent, load_skill, react, read_qa_queue],
+    tools=[db_read, db_write, call_support_agent, load_skill, react, read_qa_queue],
     middleware=[SlidingWindowMiddleware(max_messages=20), ToolRetryMiddleware(max_retries=2)],
 )

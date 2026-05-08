@@ -1,14 +1,10 @@
 import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.config import settings
 from app.api import auth, agent, profile, resumes, jobs, applications, interviews, session
 
-AGENT_URLS = [
-    "http://profile-agent:8001",
-    "http://matching-agent:8002",
-    "http://interview-agent:8003",
-    "http://support-agent:8004",
-]
+AGENT_URLS = [u.strip() for u in settings.agent_urls.split(",")]
 
 app = FastAPI(title="AI Job Copilot")
 app.add_middleware(

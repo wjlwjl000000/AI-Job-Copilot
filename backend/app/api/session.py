@@ -66,6 +66,9 @@ async def delete_session(
         return {"status": "not_found"}
     await db.delete(session)
     await db.commit()
+    # 联动清理该会话的已解析文件
+    from app.api.agent import _parsed_files
+    _parsed_files.pop(session_id, None)
     return {"status": "deleted"}
 
 

@@ -8,6 +8,8 @@ export const useSessionStore = defineStore('session', () => {
   const sessions = ref([])
   const currentId = ref(null)
   const messages = ref([])
+  const fileList = ref([])
+  const profile = ref({})
 
   async function fetchSessions() {
     const data = await api.getSessions()
@@ -30,6 +32,7 @@ export const useSessionStore = defineStore('session', () => {
     sessions.value = sessions.value.filter(s => s.id !== id)
     if (currentId.value === id) {
       messages.value = []
+      fileList.value = []
       currentId.value = null
       if (sessions.value.length > 0) {
         await switchSession(sessions.value[0].id)
@@ -41,6 +44,7 @@ export const useSessionStore = defineStore('session', () => {
 
   async function switchSession(id) {
     currentId.value = id
+    fileList.value = []
     const data = await api.getMessages(id)
     messages.value = data.map(m => ({ role: m.role, content: m.content, id: m.id }))
   }
@@ -51,15 +55,25 @@ export const useSessionStore = defineStore('session', () => {
     messages.value.push(msg)
   }
 
+  async function fetchProfile() {
+    try {
+      const data = await api.getProfile()
+      if (data && data.id) profile.value = data
+    } catch (e) {}
+  }
+
   return {
     clientId,
     sessions,
     currentId,
     messages,
+    fileList,
+    profile,
     fetchSessions,
     createSession,
     deleteSession,
     switchSession,
     addMessage,
+    fetchProfile,
   }
 })

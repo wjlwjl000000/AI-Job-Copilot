@@ -23,6 +23,7 @@ export const api = {
   // Profile
   getProfile: () => request('GET', '/api/profile'),
   updateProfile: (data) => request('PUT', '/api/profile', data),
+  deleteProfile: () => request('DELETE', '/api/profile'),
 
   // Resumes
   uploadResume: (formData) => fetch(`${BASE}/api/resumes/upload`, { method: 'POST', body: formData }).then(r => r.json()),
@@ -71,6 +72,14 @@ export const api = {
       body: JSON.stringify(body),
     })
   },
+
+  // File parsing (MinerU)
+  uploadFile: (formData, sessionId) => {
+    if (sessionId) formData.append('session_id', sessionId)
+    return fetch(`${BASE}/api/agent/parse-file`, { method: 'POST', body: formData }).then(r => r.json())
+  },
+  deleteFile: (fileId, sessionId) => request('DELETE', `/api/agent/parse-file/${fileId}?session_id=${encodeURIComponent(sessionId || '')}`),
+  getFile: (fileId, sessionId) => request('GET', `/api/agent/parse-file/${fileId}?session_id=${encodeURIComponent(sessionId || '')}`),
 
   // Agent Registry
   listAgents: () => request('GET', '/api/agent/registry'),

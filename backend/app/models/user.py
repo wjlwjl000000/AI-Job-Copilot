@@ -18,6 +18,5 @@ class User(Base):
         String(30), nullable=False, default="2026-01-01T00:00:00"
     )
 
-    profile = relationship("UserProfile", back_populates="user", uselist=False)
     resumes = relationship("Resume", back_populates="user")
     applications = relationship("Application", back_populates="user")

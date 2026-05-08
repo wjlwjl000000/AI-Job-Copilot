@@ -1,3 +1,4 @@
+from typing import Annotated
 from langchain_core.tools import tool
 from langchain_chroma import Chroma
 from langchain_openai import OpenAIEmbeddings
@@ -27,8 +28,12 @@ async def chroma_query(collection: str, query: str, k: int = 5) -> list[dict]:
 
 
 @tool
-async def chroma_insert(collection: str, documents: list[str], metadatas: list[dict] = None) -> str:
-    """写入向量到Chroma，使用add_documents一行写入。collection: jobs|stories|profiles"""
+async def chroma_insert(
+    collection: Annotated[str, "集合名，可选值：jobs|stories|profiles"],
+    documents: Annotated[list[str], "要写入的文档内容列表"],
+    metadatas: Annotated[list[dict], "每个文档对应的元数据列表"] = None,
+) -> str:
+    """写入向量到Chroma，使用add_documents一行写入"""
     store = Chroma(
         collection_name=collection,
         embedding_function=embeddings,

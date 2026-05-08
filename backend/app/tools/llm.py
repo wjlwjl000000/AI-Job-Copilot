@@ -2,10 +2,23 @@ from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 from app.config import settings
 
+# llm = ChatOpenAI(
+#     model=settings.openai_model,
+#     api_key=settings.openai_api_key,
+#     base_url=settings.openai_base_url,
+#     streaming=True,
+# )
 llm = ChatOpenAI(
-    model=settings.openai_model,
-    api_key=settings.openai_api_key,
-    base_url=settings.openai_base_url,
+    model=settings.zhipuai_model,
+    api_key=settings.zhipuai_api_key,
+    base_url=settings.zhipuai_base_url,
+    streaming=True,
+)
+
+zhipu_llm = ChatOpenAI(
+    model=settings.zhipuai_model,
+    api_key=settings.zhipuai_api_key,
+    base_url=settings.zhipuai_base_url,
     streaming=True,
 )
 

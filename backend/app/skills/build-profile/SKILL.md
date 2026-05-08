@@ -6,118 +6,91 @@ description: Use when parsed resume text or skill descriptions are available and
 # Build Profile
 
 ## Overview
-Convert resume text and user preferences into a structured `UserProfile` persisted in PostgreSQL and vectorized in Chroma for downstream agents.
+调用 `parse_document()` 解析当前会话已上传的简历文件，获取结构化画像 JSON，经确认后持久化到 PostgreSQL 并向量化到 Chroma。画像以上传简历为唯一数据源，重新上传即覆盖。
 
 ## When to Use
-- `parse-resume` returned structured data or user provided skill descriptions
-- User says "生成我的求职画像", "更新画像", or "分析我的技能"
-- Profile data is stale or target role changed
+- 用户上传简历后要求构建/更新求职画像
+- 用户说"生成我的画像"、"更新画像"、"帮我构建画像"
+- 用户重新上传简历，需要以最新简历为准覆盖旧画像
 
 ## When NOT to Use
-- Resume file not yet parsed → `parse-resume`
-- Just need job search → `match-jobs`
-- Just need match score → `score-match`
+- 未上传简历文件 → 提示用户先上传
+- 仅需职位搜索 → `match-jobs`
+- 仅需匹配度评估 → `score-match`
+- 面试准备 → `generate-interview-qs`
 
-## Workflow
-1. **先检查是否已有画像** — db_read("user_profiles") 查询用户是否已有画像记录，如果有则需要基于最新输入进行更新而非覆盖
-2. **构建并持久化画像** — db_write("user_profiles", data) 将完整的结构化画像写入数据库：
-   - 从用户输入的简历文本或技能描述中提取信息
-   - 按 references/skill-taxonomy.md 的标准将技能分级
-   - 计算工作年限、整理教育背景和项目经验
-   - 如果用户提供了目标 JD 文本，提取并结构化存入 jd 字段：{content: "JD原文", requirements: [{skill, level, required}]}
-   - 综合评估竞争力、市场匹配度和画像完整度
-3. **生成向量便于检索** — chroma_insert("profiles", [summary], [metadata]) 用画像摘要（技能+目标岗位+年限的简洁描述）创建向量，使下游 Matching Agent 和 Support Agent 能通过语义搜索找到该画像
+## Workflow(每一步必须严格执行，每一份数据必须严格构建)
+以下步骤必须按序逐一执行。每步仅调用一个工具，调用完成后必须立即进入下一步，
+禁止在任何步骤输出 Final Answer 或提前终止（步骤6除外）。
 
-> 步骤2中的技能分级、年限计算、摘要生成、JD解析和竞争力评分均在Agent的Thought阶段自然完成，不需要call_llm工具。
+**步骤1** — 调用 read_profile()
+- 返回空数组 [] → 进入步骤2，不要在此输出任何文字
+- 返回已有画像 → 调用 confirm_overwrite(messages="检测到已有画像（姓名：{name}），是否覆盖？")
+  - 用户确认 → 进入步骤2
+  - 用户拒绝 → 跳到步骤6，输出必须以 "Final Answer:" 开头，说明保留原画像
+
+**步骤2** — 调用 parse_document()
+- 返回 error → 调用 react() 继续推理，提示用户上传简历
+- 返回 data 含校验警告 → 调用 react() 继续推理，列出缺失字段
+- 返回 data 无警告 → 进入步骤3
+
+**步骤3** — 调用 chroma_insert(collection="profiles", documents=[summary], metadatas=[{"profile_id": "步骤2返回的 id"}])
+- summary 模板(必须遵守)：`"{姓名}，{work_years}年经验，技能：{skills}，目标岗位：{roles}"`
+- 示例：`"巫佳龙，0年经验，技能：Python、FastAPI、Docker，目标岗位：AI应用开发"`
+- chroma_insert 返回后必须立即进入步骤4，禁止在此输出 Final Answer
+
+**步骤4** — 调用 save_profile()
+- 步骤1 无画像 → save_profile(data=步骤2返回的 data)
+- 步骤1 有画像 → save_profile(data=步骤2返回的 data, record_id=已有画像ID)
+- save_profile 返回后必须立即进入步骤5，禁止在此输出 Final Answer
+
+**步骤5** — 调用 save_resume(messages="是否保存当前解析的简历文件-{步骤2返回 data 中的 id}")
+- 此调用触发系统中断，前端弹窗询问用户是否保存原始简历
+- save_resume 返回后必须立即进入步骤6
+
+**步骤6** — 输出必须以 "Final Answer:" 开头，之后严格按 Output Format 格式输出画像数据
 
 ## Output Format
 ```
 {
-  "profile_id": "数据库生成的画像ID",
-  "skill_tags": [{"name": "技能名", "level": "初级|中级|高级|专家"}],
+  "name": "姓名",
+  "contact": {"phone": "手机号码", "email": "电子邮箱"},
+  "basic": {"age": 年龄(int), "gender": "性别", "ethnicity": "民族", "hometown": "籍贯", "political": "政治面貌"},
+  "education": [{"degree": "学历", "school": "学校", "major": "专业", "period": "就读时间段"}],
+  "skills": [{"name": "技能名", "level": "初级|中级|高级|专家", "evidence": "技能证明或项目描述"}],
+  "projects": [{"name": "项目名", "role": "担任角色", "description": "项目简介", "content": "具体内容", "tech_stack": ["技术栈"], "achievements": "成果指标"}],
+  "organization": [{"name": "组织名", "duties": "职责描述", "achievements": "成果指标"}],
   "work_years": "工作年限（整数）",
-  "education": {"degree": "学历", "school": "学校", "major": "专业"},
-  "projects": [{"name": "项目名", "description": "描述", "tech_stack": ["技术栈"]}],
   "target": {"cities": ["期望城市"], "salary_range": "期望薪资范围", "industry": "目标行业", "roles": ["目标岗位"]},
-  "scores": {"competitiveness": "0-1竞争力分", "market_match": "0-1市场匹配分", "completeness": "0-1画像完整度分"}
+  "scores": {"competitiveness": "0-1竞争力分", "market_match": "0-1市场匹配分", "completeness": "0-1画像完整度分"},
+  "summary": "个人简介/自述"
 }
 ```
 
 ## Common Mistakes
+- 已有画像时不询问直接覆盖 → 必须返回 input-required 等待用户确认
 - Skipping chroma_insert → downstream matching/support agents break
-- All skills graded as "中级" → use taxonomy in `references/skill-taxonomy.md`
-- Omitting scores field → required by downstream agents
-- db_read returned an existing profile but directly overwritten without merging → check before writing
-
-## Data Models
-
-### user_profiles（读/写）
-| 字段 | 类型 | 含义 |
-|------|------|------|
-| id | UUID | 画像唯一ID |
-| user_id | UUID | 所属用户ID |
-| skill_tags | JSON | 技能标签列表：[{name, level: "初级|中级|高级|专家"}] |
-| work_years | INT | 工作年限 |
-| education | JSON | 学历信息：{degree, school, major} |
-| projects | JSON | 项目经验：[{name, description, tech_stack}] |
-| target | JSON | 求职目标：{cities, salary_range, industry, roles} |
-| preference | JSON | 用户偏好设置 |
-| jd | JSON | 目标JD：{content: "JD原文", requirements: [{skill, level, required}]} |
-| scores | JSON | 竞争力评分：{competitiveness, market_match, completeness} 均为0-1 |
+- parse_document 返回 error 后继续执行 → 必须终止并提示用户上传简历
+- chroma_insert 的 documents 只传姓名 → 必须按模板拼接完整 summary
+- 画像 JSON 来自 parse_document 返回值，不要二次调用 call_llm
 
 ## Examples
 
-### 示例1：首次上传简历构建画像
-**场景**：用户上传了一份简历文件，尚未有画像记录。
+### 示例1：首次构建
+步骤1: read_profile() → []
+步骤2: parse_document() → {data: {id:"xxx", ...}}
+步骤3: chroma_insert(collection="profiles", documents=["张三，4年经验，技能：..."], metadatas=[{...}])
+步骤4: save_profile(data={...})
+步骤5: save_resume(messages="是否保存...-xxx") → 中断确认
+步骤6: Final Answer: {画像JSON}
 
-**工具调用序列**：
-1. db_read("user_profiles") → []（确认无已有画像）
+### 示例2：已有画像覆盖
+步骤1: read_profile() → [{id:"prof-abc123", name:"张三"}]
+       → confirm_overwrite(messages="检测到已有画像（姓名：张三），是否覆盖？") → 用户确认
+步骤2: parse_document() → {data: {...}}
+步骤3: chroma_insert(...)
+步骤4: save_profile(data={...}, record_id="prof-abc123")
+步骤5: save_resume(messages="是否保存...-xxx") → 中断确认
+步骤6: Final Answer: {画像JSON}
 
-2. db_write("user_profiles", {
-     "user_id": "u-default",
-     "skill_tags": [
-       {"name": "Python", "level": "高级"},
-       {"name": "FastAPI", "level": "中级"},
-       {"name": "PostgreSQL", "level": "中级"},
-       {"name": "Docker", "level": "初级"}
-     ],
-     "work_years": 4,
-     "education": {"degree": "本科", "school": "XX大学", "major": "计算机科学"},
-     "projects": [
-       {"name": "智能客服系统", "description": "基于LangChain的RAG客服机器人", "tech_stack": ["Python", "LangChain", "FAISS"]}
-     ],
-     "target": {"cities": ["北京", "杭州"], "salary_range": "25k-35k", "industry": "AI应用", "roles": ["AI工程师", "后端开发"]},
-     "scores": {"competitiveness": 0.72, "market_match": 0.65, "completeness": 0.80}
-   })
-   → {"id": "prof-abc123"}
-
-3. chroma_insert("profiles", ["4年Python后端开发，目标AI工程师/后端开发，技能：Python(高级) FastAPI(中级) PostgreSQL(中级) Docker(初级)"], [{"profile_id": "prof-abc123"}])
-   → {"ids": ["vec-001"]}
-
-**最终输出**：
-{
-  "profile_id": "prof-abc123",
-  "skill_tags": [{"name": "Python", "level": "高级"}, ...],
-  "work_years": 4,
-  "scores": {"competitiveness": 0.72, "market_match": 0.65, "completeness": 0.80}
-}
-
-### 示例2：已有画像时基于新输入更新
-**场景**：用户之前构建过画像，说"我又学了Rust，目标换成后端开发"。
-
-**工具调用序列**：
-1. db_read("user_profiles") → [{"id": "prof-abc123", "skill_tags": [...], "target": {...}, ...}]（已有画像，需基于新输入更新）
-
-2. db_write("user_profiles", {
-     "id": "prof-abc123",
-     "skill_tags": [...原有技能..., {"name": "Rust", "level": "初级"}],
-     "target": {...原有target..., "roles": ["后端开发"]},
-     "scores": {"competitiveness": 0.75, "market_match": 0.68, "completeness": 0.85}
-   })
-   → {"id": "prof-abc123"}
-
-3. chroma_insert("profiles", ["更新摘要..."], [{"profile_id": "prof-abc123"}])
-
-**最终输出**：合并后的完整画像（新增Rust技能，目标岗位已更新）
-
-> 示例中的字段值来自db_read返回的实际数据或用户输入。步骤中标注"在Thought中..."的部分由Agent基于已有数据推理，不得凭空构造字段值。
+> save_profile 不触发中断，save_resume 触发中断。步骤1返回空数组时继续执行，不得提前终止。

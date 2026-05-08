@@ -1,0 +1,16 @@
+[
+  {"section": "S7", "id": "S7.1-列表", "status": "PASS", "detail": "空列表(或已有历史会话)"},
+  {"section": "S7", "id": "S7.2-新建", "status": "PASS", "detail": "返回id/turn_id/created_at/updated_at"},
+  {"section": "S7", "id": "S7.3-消息", "status": "PASS", "detail": "新会话消息列表为空"},
+  {"section": "S7", "id": "S7.4-删除", "status": "PASS", "detail": "返回{status: deleted}，列表减少1条"},
+  {"section": "S7", "id": "S7.4-验证", "status": "PASS", "detail": "删除后列表中不存在该会话"},
+
+  {"section": "S1", "id": "S1.4-闲聊", "status": "PASS", "detail": "hello → 友好问候回复，无Agent任务触发"},
+  {"section": "S1", "id": "S1.1-画像路由", "status": "PASS", "detail": "Planner正确路由到Profile Agent，返回画像构建结果(含评分)"},
+  {"section": "S1", "id": "S1.2-匹配路由", "status": "PASS", "detail": "Planner正确路由到Matching Agent"},
+  {"section": "S1", "id": "S1.3-面试路由", "status": "PASS", "detail": "Planner正确路由到Interview Agent"},
+
+  {"section": "S2", "id": "S2.1-画像构建", "status": "PASS", "detail": "提取技能(Python高级/FastAPI中级/Docker初级)、经验(4年)、学历(本科CS)。生成评分(竞争力0.45/市场0.50/完整度0.60)。存入向量库。"},
+  {"section": "S2", "id": "S2.2-画像更新", "status": "PASS", "detail": "检测到无已有画像，提示需要先构建"},
+  {"section": "S2", "id": "S2.3-无简历", "status": "PASS", "detail": "Prompt用户提供简历/技能/目标等信息"}
+]

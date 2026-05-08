@@ -856,15 +856,18 @@ User (用户)
   email, password_hash, created_at
 
 UserProfile (求职画像)
-  user_id → User
-  skill_tags: jsonb      # [{name, level}, ...]
+  id: uuid                # 唯一标识符
+  name: str               # 用户姓名
+  contact: jsonb          # {phone, email}
+  basic: jsonb            # {age, gender, ethnicity, hometown, political}
+  education: jsonb        # [{degree, school, major, period}]
+  skills: jsonb           # [{name, level, evidence}]
+  projects: jsonb         # [{name, role, description, content, tech_stack, achievements}]
+  organization: jsonb     # [{name, duties, achievements}]
   work_years: int
-  education: jsonb       # {degree, school, major}
-  projects: jsonb        # [{name, description, tech_stack}, ...]
-  target: jsonb          # {cities, salary_range, industry, roles}
-  preference: jsonb      # {notice_frequency, ...}
-  scores: jsonb          # {competitiveness, market_match, completeness}
-  jd: jsonb              # {content, requirements}（可选，用户提供的目标JD）
+  target: jsonb           # {cities, salary_range, industry, roles}
+  scores: jsonb           # {competitiveness, market_match, completeness}
+  summary: text           # 个人简介/自述
 
 Resume (简历版本)
   user_id → User

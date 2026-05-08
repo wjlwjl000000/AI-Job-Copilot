@@ -3,7 +3,7 @@ import json
 import os
 import uuid
 from datetime import datetime
-from fastapi import APIRouter, UploadFile, File, Header, Depends
+from fastapi import APIRouter, UploadFile, File, Form, Header, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import select, update
@@ -16,11 +16,15 @@ from app.a2a.client import A2AClient
 from app.database import get_db
 from app.models.session import Session
 from app.models.chat_message import ChatMessage
+from app.tools.parser import set_session_id
 
 client = A2AClient()
 registry = AgentRegistry(client=client)
 
 router = APIRouter(prefix="/api/agent", tags=["agent"])
+
+# 按 session_id 隔离的已解析文件缓存: {session_id: {file_id: {filename, text, char_count}}}
+_parsed_files: dict[str, dict] = {}
 
 
 class ChatRequest(BaseModel):
@@ -37,6 +41,9 @@ async def agent_chat(
 ):
     session_id = request.session_id
     turn_id = None
+
+    if session_id:
+        set_session_id(session_id)
 
     if session_id and x_client_id:
         result = await db.execute(
@@ -59,6 +66,7 @@ async def agent_chat(
 
     initial_state = {
         "user_id": "u-default",
+        "session_id": session_id or "",
         "messages": [HumanMessage(content=request.message)],
         "goal": "",
         "plan": [],
@@ -100,6 +108,9 @@ async def resume_chat(
 ):
     session_id = request.session_id
     turn_id = None
+
+    if session_id:
+        set_session_id(session_id)
 
     if session_id and x_client_id:
         result = await db.execute(
@@ -147,20 +158,61 @@ async def resume_chat(
 
 
 @router.post("/parse-file")
-async def parse_file(file: UploadFile = File(...)):
-    """Receive a resume file, parse it, return extracted text"""
+async def parse_file(file: UploadFile = File(...), session_id: str = Form(None)):
+    """接收文件，用 MinerULoader 解析，按 session_id 存入后端列表"""
     import tempfile
-    # Save uploaded file to temp location
+    file_id = str(uuid.uuid4())
     suffix = os.path.splitext(file.filename or "resume.pdf")[1]
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
         tmp.write(await file.read())
         tmp_path = tmp.name
+    text = None
     try:
-        from app.tools.parser import parse_document
-        result = await parse_document.ainvoke({"file_path": tmp_path})
-        return {"status": "ok", "text": result.get("text", ""), "metadata": result.get("metadata", {}), "filename": file.filename}
-    finally:
+        from langchain_mineru import MinerULoader
+        loader = MinerULoader(source=tmp_path, language='ch', mode='flash', timeout=30)
+        docs = loader.load()
+        text = "\n".join(d.page_content for d in docs)
+    except Exception:
+        pass
+
+    if not text:
+        try:
+            from PyPDF2 import PdfReader
+            reader = PdfReader(tmp_path)
+            text = "\n".join([p.extract_text() for p in reader.pages if p.extract_text()])
+        except Exception:
+            pass
+
+    if not text:
         os.unlink(tmp_path)
+        return {"status": "error", "message": "简历解析失败，请检查文件格式"}
+
+    os.unlink(tmp_path)
+    entry = {"filename": file.filename, "text": text, "char_count": len(text)}
+    if session_id:
+        _parsed_files.setdefault(session_id, {})[file_id] = entry
+    return {"status": "ok", "file_id": file_id, "filename": file.filename, "char_count": len(text)}
+
+
+@router.delete("/parse-file/{file_id}")
+async def delete_parsed_file(file_id: str, session_id: str = None):
+    """删除后端存储的已解析文件"""
+    if session_id and session_id in _parsed_files:
+        _parsed_files[session_id].pop(file_id, None)
+        if not _parsed_files[session_id]:
+            del _parsed_files[session_id]
+        return {"status": "deleted"}
+    return {"status": "not_found"}
+
+
+@router.get("/parse-file/{file_id}")
+async def get_parsed_file(file_id: str, session_id: str = None):
+    """获取已解析文件的内容"""
+    if session_id and session_id in _parsed_files:
+        f = _parsed_files[session_id].get(file_id)
+        if f:
+            return {"file_id": file_id, "filename": f["filename"], "text": f["text"], "char_count": f["char_count"]}
+    return {"status": "not_found"}
 
 
 class RegisterRequest(BaseModel):

@@ -43,20 +43,20 @@
       </div>
 
       <!-- File upload queue -->
-      <div v-if="fileQueue" class="file-queue">
-        <div class="file-item">
+      <div v-if="store.fileList.length" class="file-queue">
+        <div v-for="(f, i) in store.fileList" :key="i" class="file-item">
           <div class="file-icon">
             <span>📄</span>
-            <div v-if="fileQueue.parsing" class="spinner"></div>
+            <div v-if="f.parsing" class="spinner"></div>
             <span v-else class="check">✓</span>
           </div>
           <div class="file-info">
-            <div class="file-name">{{ fileQueue.name }}</div>
+            <div class="file-name">{{ f.name }}</div>
             <div class="file-status">
-              {{ fileQueue.parsing ? '解析中...' : `解析完成 (${fileQueue.charCount}字)` }}
+              {{ f.parsing ? '解析中...' : `解析完成 (${f.charCount}字)` }}
             </div>
           </div>
-          <button class="file-cancel" @click="clearFile" title="取消上传">⊗</button>
+          <button class="file-cancel" @click="removeFile(i)" title="移除文件">⊗</button>
         </div>
       </div>
 
@@ -66,12 +66,12 @@
         <button @click="resumeChat">确认</button>
       </div>
       <div class="input-area">
-        <button class="upload-btn" @click="$refs.fileUpload.click()" :disabled="thinking || !!fileQueue" title="上传简历">
+        <button class="upload-btn" @click="$refs.fileUpload.click()" :disabled="thinking" title="上传简历">
           📎
         </button>
         <input type="file" ref="fileUpload" @change="handleFilePicked" accept=".pdf,.docx,.doc,.txt" style="display:none" />
         <input v-model="input" @keyup.enter="sendMessage" placeholder="输入消息..." :disabled="thinking" />
-        <button @click="sendMessage" :disabled="thinking || (fileQueue && fileQueue.parsing)">发送</button>
+        <button @click="sendMessage" :disabled="thinking || store.fileList.some(f => f.parsing)">发送</button>
       </div>
     </div>
   </div>
@@ -89,7 +89,6 @@ const userAnswer = ref('')
 const interrupt = ref(null)
 const thinking = ref(false)
 const msgContainer = ref(null)
-const fileQueue = ref(null)
 let localMsgId = 0
 
 function nextMsgId() {
@@ -131,55 +130,54 @@ async function handleDeleteSession(id) {
 async function handleFilePicked(e) {
   const file = e.target.files[0]
   if (!file) return
-  fileQueue.value = { name: file.name, parsing: true, charCount: 0, text: '' }
+  const idx = store.fileList.length
+  store.fileList.push({ name: file.name, parsing: true, charCount: 0, file_id: null })
 
   const fd = new FormData()
   fd.append('file', file)
   try {
-    const r = await fetch('http://localhost:8080/api/agent/parse-file', { method: 'POST', body: fd })
-    const data = await r.json()
+    const data = await api.uploadFile(fd, store.currentId)
     if (data.status === 'ok') {
-      fileQueue.value.parsing = false
-      fileQueue.value.text = data.text
-      fileQueue.value.charCount = data.text.length
+      store.fileList[idx].file_id = data.file_id
+      store.fileList[idx].charCount = data.char_count
+      store.fileList[idx].parsing = false
     } else {
-      fileQueue.value = null
+      alert('文件解析失败: ' + (data.message || JSON.stringify(data)))
+      store.fileList.splice(idx, 1)
     }
   } catch (e) {
-    fileQueue.value = null
+    alert('文件上传失败: ' + e.message)
+    store.fileList.splice(idx, 1)
   }
+  e.target.value = ''
 }
 
-function clearFile() {
-  fileQueue.value = null
+async function removeFile(idx) {
+  const f = store.fileList[idx]
+  if (f && f.file_id) await api.deleteFile(f.file_id, store.currentId)
+  store.fileList.splice(idx, 1)
 }
 
 // Chat
 async function sendMessage() {
-  if ((!input.value.trim() && !fileQueue.value) || thinking.value) return
-  if (fileQueue.value && fileQueue.value.parsing) return
+  const hasFiles = store.fileList.some(f => !f.parsing)
+  if ((!input.value.trim() && !hasFiles) || thinking.value) return
+  if (store.fileList.some(f => f.parsing)) return
   if (!store.currentId) return
 
-  const displayText = input.value.trim() || (fileQueue.value ? '请分析我的简历' : '')
+  const displayText = input.value.trim() || (hasFiles ? '请分析我的简历' : '')
   input.value = ''
 
-  const attachment = fileQueue.value
-    ? { name: fileQueue.value.name, chars: fileQueue.value.charCount }
-    : null
-
-  const sendText = fileQueue.value?.text
-    ? `${displayText}\n\n[附件简历内容]:\n${fileQueue.value.text}`
-    : displayText
-
+  const attachment = hasFiles ? { name: store.fileList.find(f => !f.parsing)?.name, chars: store.fileList.find(f => !f.parsing)?.charCount } : null
   store.addMessage('user', displayText, attachment)
-  fileQueue.value = null
+  store.fileList = []
 
   const thinkingMsg = { role: 'agent', content: '思考中', thinking: true, id: nextMsgId() }
   store.messages.push(thinkingMsg)
   thinking.value = true
   scrollDown()
 
-  const response = await api.sendChatMessage(sendText, store.currentId)
+  const response = await api.sendChatMessage(displayText, store.currentId)
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
@@ -200,6 +198,7 @@ async function sendMessage() {
         } else if (data.type === 'done') {
           store.messages = store.messages.filter(m => m.id !== thinkingMsg.id)
           interrupt.value = null
+          store.fetchProfile()
         } else if (data.question) {
           store.messages = store.messages.filter(m => m.id !== thinkingMsg.id)
           interrupt.value = data
@@ -209,6 +208,7 @@ async function sendMessage() {
   }
   store.messages = store.messages.filter(m => m.id !== thinkingMsg.id)
   thinking.value = false
+  store.fetchProfile()
 }
 
 async function resumeChat() {
@@ -248,12 +248,14 @@ async function resumeChat() {
         } else if (data.type === 'done') {
           store.messages = store.messages.filter(m => m.id !== thinkingMsg.id)
           interrupt.value = null
+          store.fetchProfile()
         }
       } catch (e) {}
     }
   }
   store.messages = store.messages.filter(m => m.id !== thinkingMsg.id)
   thinking.value = false
+  store.fetchProfile()
 }
 
 onMounted(async () => {

@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import String, Integer, ForeignKey, JSON
+from sqlalchemy import String, Integer, ForeignKey, JSON, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
@@ -10,16 +10,14 @@ class UserProfile(Base):
     id: Mapped[str] = mapped_column(
         String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
-    user_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("users.id"), unique=True, nullable=False
-    )
-    skill_tags: Mapped[dict] = mapped_column(JSON, default=list)
+    name: Mapped[str] = mapped_column(String(100), nullable=True)
+    contact: Mapped[dict] = mapped_column(JSON, nullable=True)
+    basic: Mapped[dict] = mapped_column(JSON, nullable=True)
+    education: Mapped[list] = mapped_column(JSON, default=list)
+    skills: Mapped[list] = mapped_column(JSON, default=list)
+    projects: Mapped[list] = mapped_column(JSON, default=list)
+    organization: Mapped[list] = mapped_column(JSON, default=list)
     work_years: Mapped[int] = mapped_column(Integer, default=0)
-    education: Mapped[dict] = mapped_column(JSON, default=dict)
-    projects: Mapped[dict] = mapped_column(JSON, default=list)
-    target: Mapped[dict] = mapped_column(JSON, default=dict)
-    preference: Mapped[dict] = mapped_column(JSON, default=dict)
-    scores: Mapped[dict] = mapped_column(JSON, default=dict)
-    jd: Mapped[dict] = mapped_column(JSON, nullable=True)
-
-    user = relationship("User", back_populates="profile")
+    target: Mapped[dict] = mapped_column(JSON, nullable=True)
+    scores: Mapped[dict] = mapped_column(JSON, nullable=True)
+    summary: Mapped[str] = mapped_column(Text, nullable=True)

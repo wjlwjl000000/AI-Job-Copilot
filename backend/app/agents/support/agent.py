@@ -3,14 +3,11 @@ from langchain.agents import create_agent
 from langchain.agents.middleware import ToolRetryMiddleware
 from langchain_openai import ChatOpenAI
 from app.config import settings
-from app.tools.llm import call_llm
+from app.tools.llm import llm
 from app.tools.database import db_read
 from app.tools.chroma import chroma_query
 from app.tools.agent_tools import react, load_skill
 from app.middleware.sliding_window import SlidingWindowMiddleware
-
-llm = ChatOpenAI(model=settings.openai_model, api_key=settings.openai_api_key, base_url=settings.openai_base_url, streaming=True)
-
 
 def _build_skills_list(base_dir: str, names: list[str]) -> str:
     lines = []
@@ -27,7 +24,11 @@ def _build_skills_list(base_dir: str, names: list[str]) -> str:
 
 
 _sl = _build_skills_list("app/skills", ["comfort-user", "daily-checkin"])
-_prompt = f"""## 角色定义
+_prompt = f"""**工具速记**：load_skill(skill_name="comfort-user"|"daily-checkin") | db_read(table, filters?) | chroma_query(collection, query, k) | react()
+
+ReAct 规则：Think → Act → Observe 循环。每步 Act 调用工具。任务未完成 → 调用 react() 继续。所有步骤完成 → Final Answer。
+
+## 角色定义
 你是求职情感支持专家。你专长于：倾听求职者的挫折和焦虑，匹配数据库中相似的真实求职经历，
 生成温暖、有共鸣的鼓励内容。你不是心理咨询师，只是一名有过类似经历的陪伴者。
 
@@ -55,6 +56,6 @@ _prompt = f"""## 角色定义
 
 support_agent = create_agent(
     model=llm, system_prompt=_prompt,
-    tools=[chroma_query, db_read, call_llm, load_skill, react],
+    tools=[chroma_query, db_read, load_skill, react],
     middleware=[SlidingWindowMiddleware(max_messages=20), ToolRetryMiddleware(max_retries=2)],
 )

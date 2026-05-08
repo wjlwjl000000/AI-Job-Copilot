@@ -24,15 +24,21 @@ def _agent_url(agent_name: str) -> str:
     return f"http://{svc}:{port}"
 
 
-async def _execute_task(task: dict, client: A2AClient) -> tuple[dict, dict | None]:
+async def _execute_task(task: dict, session_id: str, client: A2AClient) -> tuple[dict, dict | None]:
     """执行单个 A2A 任务，返回 (task_info, result_or_none)。连接失败返回 None。"""
     url = _agent_url(task["agent"])
+    data = dict(task.get("data", {}))
+    if session_id:
+        data["session_id"] = session_id
+        from app.api.agent import _parsed_files as supervisor_files
+        if session_id in supervisor_files:
+            data["_parsed_files"] = supervisor_files[session_id]
     try:
         result = await client.send_message(url, message={
             "role": "user",
             "parts": [
                 {"type": "text", "text": f"执行任务: {task['action']}"},
-                {"type": "application/json", "content": task["data"]},
+                {"type": "application/json", "content": data},
             ]
         })
         return task, result
@@ -47,22 +53,36 @@ async def executor_node(state: SupervisorState) -> dict:
     if not pending:
         return {"all_results": state["all_results"]}
 
-    running = [asyncio.create_task(_execute_task(t, a2a_client)) for t in pending]
+    session_id = state.get("session_id", "")
+    running = [asyncio.create_task(_execute_task(t, session_id, a2a_client)) for t in pending]
 
     for coro in asyncio.as_completed(running):
         task, result = await coro
-
+        print(f"[executor]: task-{task}, result-{result}")
         tid = task.get("task_id", task["agent"])
         if result is None:
             state["all_results"][tid] = [{"error": "agent_unavailable"}]
             continue
 
         if result.result and result.result.status.state == "input-required":
-            user_answer = interrupt({
+            msg = result.result.status.message or "请提供更多信息"
+            interrupt_payload = {
                 "type": "user_question",
-                "question": result.result.status.message or "请提供更多信息",
+                "question": msg,
                 "task_id": result.result.id,
-            })
+            }
+            # 从 messages 中提取 file_id，获取简历原文用于弹窗展示
+            if "-" in msg:
+                parts = msg.rsplit("-", 1)
+                if len(parts) == 2:
+                    file_id = parts[1]
+                    from app.api.agent import _parsed_files as supervisor_files
+                    fs = supervisor_files.get(session_id, {})
+                    if file_id in fs:
+                        f = fs[file_id]
+                        interrupt_payload["filename"] = f["filename"]
+                        interrupt_payload["resume_text"] = f["text"][:800]
+            user_answer = interrupt(interrupt_payload)
             continued = await a2a_client.send_message(
                 agent_url=_agent_url(task["agent"]),
                 message={

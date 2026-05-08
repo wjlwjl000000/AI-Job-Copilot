@@ -4,15 +4,11 @@ from app.agents.supervisor.state import SupervisorState
 from app.tools.llm import llm
 from app.a2a.registry import AgentRegistry
 from app.a2a.client import A2AClient
+from app.config import settings
 
 registry = AgentRegistry(client=A2AClient())
 _registry_loaded = False
-AGENT_URLS = [
-    "http://profile-agent:8001",
-    "http://matching-agent:8002",
-    "http://interview-agent:8003",
-    "http://support-agent:8004",
-]
+AGENT_URLS = [u.strip() for u in settings.agent_urls.split(",")]
 
 async def _ensure_registry():
     global _registry_loaded

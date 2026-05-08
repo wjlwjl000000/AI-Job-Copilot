@@ -4,6 +4,7 @@ from langgraph.graph.message import add_messages
 
 class SupervisorState(TypedDict):
     user_id: str
+    session_id: str
     messages: Annotated[list, add_messages]
     goal: str
     plan: list[dict]

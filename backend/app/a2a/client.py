@@ -4,7 +4,7 @@ from app.a2a.types import JsonRpcRequest, JsonRpcResponse
 
 class A2AClient:
     def __init__(self):
-        self._client = httpx.AsyncClient(timeout=60.0)
+        self._client = httpx.AsyncClient(timeout=300.0)
 
     async def _post(self, url: str, payload: dict) -> JsonRpcResponse:
         resp = await self._client.post(url, json=payload)

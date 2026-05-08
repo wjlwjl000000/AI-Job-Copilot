@@ -50,7 +50,17 @@
       "Bash(python -c \"import json; print\\(json.dumps\\({'message':'帮我分析简历'}\\)\\)\")",
       "Bash(python -c \"import json; print\\(json.dumps\\({'message':'我上传了简历文件\\(简历ID: r-1\\)，请帮我解析并分析我的技能，然后搜索适合我的职位'}\\)\\)\")",
       "Bash(python -c \"import json; print\\(json.dumps\\({'message':'hello'}\\)\\)\")",
-      "Bash(python *)"
+      "Bash(python *)",
+      "Bash(PYTHONIOENCODING=utf-8 E:/E/Environment/anaconda3/envs/langchain/python.exe test_chat2.py)",
+      "Bash(MSYS_NO_PATHCONV=1 docker logs newaijobcopilot-backend-1 *)",
+      "Bash(PYTHONIOENCODING=utf-8 E:/E/Environment/anaconda3/envs/langchain/python.exe test_e2e.py)",
+      "Bash(PYTHONIOENCODING=utf-8 E:/E/Environment/anaconda3/envs/langchain/python.exe test_s1_fix.py)",
+      "Bash(ls -la *.sh *.bat *.ps1 Makefile justfile)",
+      "Bash(ls backend/.env*)",
+      "Bash(ls frontend/.env*)",
+      "Bash(docker restart *)",
+      "Bash(MSYS_NO_PATHCONV=1 docker logs newaijobcopilot-profile-agent-1 *)",
+      "WebFetch(domain:docs.langchain.com)"
     ]
   }
 }
