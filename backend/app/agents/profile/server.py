@@ -38,43 +38,34 @@ async def handle_task(request):
         if p["type"] == "application/json":
             data.update(p.get("content", {}))
 
-    if task_id in _task_sessions:
-        # 恢复模式
-        session = _task_sessions.pop(task_id)
+    # ── 决定输入类型（首次 or resume）──
+    session = _task_sessions.pop(task_id, None)
+    if session is not None:
+        # resume: 用 Command 恢复 graph，sid/config 从上一次 session 取
         sid = session["sid"]
         config = session["config"]
+        if sid:
+            set_session_id(sid)  # 确保 save_resume 能找到已上传文件
         user_text = text.strip().lower()
         decision = "approve" if user_text in ("是", "确认", "yes", "ok", "覆盖", "同意") else "reject"
-        result = await profile_agent.ainvoke(
-            Command(resume={"decisions": [{"type": decision}]}), config
-        )
-        ai_msgs = [m for m in result.get("messages", []) if getattr(m, "type", "") == "ai"]
-        answer = ai_msgs[-1].content if ai_msgs else str(result)
-        if sid and "Final Answer" in answer:
-            _parsed_files.pop(sid, None)
-        return JsonRpcResponse(
-            id=request.id,
-            result=TaskResult(
-                id=task_id,
-                status=TaskStatus(state="completed"),
-                artifacts=[TaskArtifact(content={"result": answer})],
-            ),
-        )
+        input_msg = Command(resume={"decisions": [{"type": decision}]})
+    else:
+        # 首次: 提取 session 信息，构建初始消息
+        sid = data.pop("session_id", None)
+        parsed = data.pop("_parsed_files", None)
+        if sid:
+            set_session_id(sid)
+        if parsed:
+            _parsed_files[sid] = parsed
+        prompt = f"{text}\n任务数据: {data}" if data else text
+        config = {"configurable": {"thread_id": task_id}}
+        input_msg = {"messages": [HumanMessage(content=prompt)]}
 
-    # 首次执行
-    sid = data.pop("session_id", None)
-    parsed = data.pop("_parsed_files", None)
-    if sid:
-        set_session_id(sid)
-    if parsed:
-        _parsed_files[sid] = parsed
+    # ── 统一执行（首次和 resume 走同一路径）──
+    result = await profile_agent.ainvoke(input_msg, config)
 
-    prompt = f"{text}\n任务数据: {data}" if data else text
-    config = {"configurable": {"thread_id": task_id}}
-    result = await profile_agent.ainvoke({"messages": [HumanMessage(content=prompt)]}, config)
-    # 检查是否触发中断
+    # 检查中断：无论首次还是 resume，有中断就返回 input-required
     interrupts = result.get("__interrupt__")
-    print(f"[profile agent]:" + interrupts)
     if interrupts:
         _task_sessions[task_id] = {"config": config, "sid": sid}
         action_requests = interrupts[0].value.get("action_requests", []) if hasattr(interrupts[0], "value") else []
@@ -87,9 +78,10 @@ async def handle_task(request):
             ),
         )
 
+    # 无中断 → 完成
     ai_msgs = [m for m in result.get("messages", []) if getattr(m, "type", "") == "ai"]
     answer = ai_msgs[-1].content if ai_msgs else str(result)
-    if sid and "Final Answer" in answer:
+    if sid:
         _parsed_files.pop(sid, None)
     return JsonRpcResponse(
         id=request.id,

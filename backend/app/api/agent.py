@@ -80,22 +80,28 @@ async def agent_chat(
 
     async def event_stream():
         response_content = ""
+        interrupted = False
         async for event in graph.astream(initial_state, config, stream_mode="updates"):
             if "__interrupt__" in event:
-                yield f"data: {json.dumps(event['__interrupt__'], ensure_ascii=False)}\n\n"
+                interrupted = True
+                iv = event["__interrupt__"]
+                if not isinstance(iv, (list, tuple)):
+                    iv = [iv]
+                payload = iv[0].value if hasattr(iv[0], "value") else iv[0]
+                yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
             elif "synthesizer" in event:
                 content = event["synthesizer"].get("synthesized_response", "")
                 response_content = content
                 yield f"data: {json.dumps({'type': 'response', 'content': content, 'turn_id': turn_id}, ensure_ascii=False)}\n\n"
 
-        if session_id and response_content:
-            agent_msg = ChatMessage(
-                session_id=session_id, role="agent", content=response_content
-            )
-            db.add(agent_msg)
-            await db.commit()
-
-        yield f"data: {json.dumps({'type': 'done', 'turn_id': turn_id}, ensure_ascii=False)}\n\n"
+        if not interrupted:
+            if session_id and response_content:
+                agent_msg = ChatMessage(
+                    session_id=session_id, role="agent", content=response_content
+                )
+                db.add(agent_msg)
+                await db.commit()
+            yield f"data: {json.dumps({'type': 'done', 'turn_id': turn_id}, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
@@ -135,41 +141,57 @@ async def resume_chat(
 
     async def event_stream():
         response_content = ""
+        interrupted = False
         async for event in graph.astream(
             Command(resume={"answer": request.message}),
             config,
             stream_mode="updates",
         ):
-            if "synthesizer" in event:
+            if "__interrupt__" in event:
+                interrupted = True
+                iv = event["__interrupt__"]
+                if not isinstance(iv, (list, tuple)):
+                    iv = [iv]
+                payload = iv[0].value if hasattr(iv[0], "value") else iv[0]
+                yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+            elif "synthesizer" in event:
                 content = event["synthesizer"].get("synthesized_response", "")
                 response_content = content
                 yield f"data: {json.dumps({'type': 'response', 'content': content}, ensure_ascii=False)}\n\n"
 
-        if session_id and response_content:
-            agent_msg = ChatMessage(
-                session_id=session_id, role="agent", content=response_content
-            )
-            db.add(agent_msg)
-            await db.commit()
-
-        yield f"data: {json.dumps({'type': 'done'})}\n\n"
+        if not interrupted:
+            if session_id and response_content:
+                agent_msg = ChatMessage(
+                    session_id=session_id, role="agent", content=response_content
+                )
+                db.add(agent_msg)
+                await db.commit()
+            yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
 @router.post("/parse-file")
 async def parse_file(file: UploadFile = File(...), session_id: str = Form(None)):
-    """接收文件，用 MinerULoader 解析，按 session_id 存入后端列表"""
-    import tempfile
+    """接收文件，MinerU 解析文本，原始文件持久化到 uploads/ 目录"""
+    import shutil
+    UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads")
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+
     file_id = str(uuid.uuid4())
     suffix = os.path.splitext(file.filename or "resume.pdf")[1]
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-        tmp.write(await file.read())
-        tmp_path = tmp.name
+    safe_name = f"{file_id}{suffix}"
+    file_path = os.path.join(UPLOAD_DIR, safe_name)
+
+    content = await file.read()
+    with open(file_path, "wb") as f:
+        f.write(content)
+
+    # 用临时文件喂给 MinerU / PyPDF2 解析文本
     text = None
     try:
         from langchain_mineru import MinerULoader
-        loader = MinerULoader(source=tmp_path, language='ch', mode='flash', timeout=30)
+        loader = MinerULoader(source=file_path, language='ch', mode='flash', timeout=30)
         docs = loader.load()
         text = "\n".join(d.page_content for d in docs)
     except Exception:
@@ -178,17 +200,16 @@ async def parse_file(file: UploadFile = File(...), session_id: str = Form(None))
     if not text:
         try:
             from PyPDF2 import PdfReader
-            reader = PdfReader(tmp_path)
+            reader = PdfReader(file_path)
             text = "\n".join([p.extract_text() for p in reader.pages if p.extract_text()])
         except Exception:
             pass
 
     if not text:
-        os.unlink(tmp_path)
+        os.unlink(file_path)
         return {"status": "error", "message": "简历解析失败，请检查文件格式"}
 
-    os.unlink(tmp_path)
-    entry = {"filename": file.filename, "text": text, "char_count": len(text)}
+    entry = {"filename": file.filename, "text": text, "char_count": len(text), "file_path": file_path}
     if session_id:
         _parsed_files.setdefault(session_id, {})[file_id] = entry
     return {"status": "ok", "file_id": file_id, "filename": file.filename, "char_count": len(text)}

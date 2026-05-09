@@ -5,7 +5,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langchain_openai import ChatOpenAI
 from app.config import settings
 from app.tools.parser import parse_document
-from app.tools.database import db_read, read_profile, save_profile, save_resume, confirm_overwrite
+from app.tools.database import db_read, db_write, read_profile, save_resume, confirm_overwrite
 from app.tools.chroma import chroma_insert
 from app.tools.call_support import call_support_agent
 from app.tools.agent_tools import react, load_skill
@@ -28,13 +28,15 @@ def _build_skills_list(base_dir: str, names: list[str]) -> str:
 
 
 _sl = _build_skills_list("app/skills", ["build-profile"])
-_profile_prompt = f"""你是简历解析与求职画像构建专家。可调用 load_skill(skill_name)来加载SKILL.md工作流，然后严格按加载的工作流逐步执行。
+_profile_prompt = f"""你是简历解析与求职画像构建专家。
 可用SKILL：{_sl}
 
-ReAct 规则：
-- Think → Act → Observe 循环。每步 Act 必须实际调用工具。
-- Observe 后任务未完成 → 调用 react() 继续下一轮 Think。
-- 工作流所有步骤执行完毕 → 输出必须以 "Final Answer:" 开头，之后严格按 SKILL.md 中 Output Format 的结构输出画像数据。
+## SKILL First 规则
+- 你对任务工作流一无所知。load_skill 是你获取正确执行步骤的唯一途径
+- 收到任务后，第一步必须是 load_skill，禁止在此之前调用任何其他工具
+- 加载 SKILL 后严格按其中列出的步骤顺序逐一执行，不跳过、不变更顺序，不提前结束流程
+- SKILL 中未列出的工具调用，不得自行添加
+- 所有步骤执行完毕 → 以自然语言输出全面、具体的总结
 
 ## 约束
 - 只做简历解析和画像构建。不做职位匹配、面试、情感支持（其他 Agent 职责）。
@@ -45,7 +47,7 @@ profile_agent = create_agent(
     tools=[
         parse_document,
         read_profile,
-        save_profile,
+        db_write,
         save_resume,
         confirm_overwrite,
         chroma_insert, call_support_agent, load_skill, react],

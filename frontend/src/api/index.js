@@ -26,8 +26,8 @@ export const api = {
   deleteProfile: () => request('DELETE', '/api/profile'),
 
   // Resumes
-  uploadResume: (formData) => fetch(`${BASE}/api/resumes/upload`, { method: 'POST', body: formData }).then(r => r.json()),
   listResumes: () => request('GET', '/api/resumes'),
+  getResume: (id) => request('GET', `/api/resumes/${id}`),
   deleteResume: (id) => request('DELETE', `/api/resumes/${id}`),
 
   // Jobs

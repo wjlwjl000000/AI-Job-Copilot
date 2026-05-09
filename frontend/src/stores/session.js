@@ -10,6 +10,7 @@ export const useSessionStore = defineStore('session', () => {
   const messages = ref([])
   const fileList = ref([])
   const profile = ref({})
+  const resumes = ref([])
 
   async function fetchSessions() {
     const data = await api.getSessions()
@@ -62,6 +63,13 @@ export const useSessionStore = defineStore('session', () => {
     } catch (e) {}
   }
 
+  async function fetchResumes() {
+    try {
+      const data = await api.listResumes()
+      resumes.value = Array.isArray(data) ? data : []
+    } catch (e) {}
+  }
+
   return {
     clientId,
     sessions,
@@ -69,11 +77,13 @@ export const useSessionStore = defineStore('session', () => {
     messages,
     fileList,
     profile,
+    resumes,
     fetchSessions,
     createSession,
     deleteSession,
     switchSession,
     addMessage,
     fetchProfile,
+    fetchResumes,
   }
 })

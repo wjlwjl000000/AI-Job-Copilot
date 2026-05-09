@@ -61,15 +61,6 @@ async def read_profile() -> list[dict]:
 
 
 @tool
-async def save_profile(
-    data: Annotated[dict, "要写入的画像数据"],
-    record_id: Annotated[str, "已有画像ID，更新时传入"] = None,
-) -> str:
-    """保存画像到 user_profiles 表。data 直接从 parse_document 返回值复制。"""
-    return await db_write.ainvoke({"table": "user_profiles", "data": data, "record_id": record_id})
-
-
-@tool
 async def confirm_overwrite(
     messages: Annotated[str, "中断提示信息，格式：'检测到已有画像（姓名：XX），是否覆盖？'"],
 ) -> str:
@@ -91,6 +82,8 @@ async def save_resume(
     return await db_write.ainvoke({
         "table": "resumes", "data": {
             "user_id": "u-default", "title": first["filename"],
-            "base_version": True, "content": {"raw_text": first["text"]}
+            "base_version": True,
+            "content": {"raw_text": first["text"]},
+            "file_path": first.get("file_path", ""),
         }
     })

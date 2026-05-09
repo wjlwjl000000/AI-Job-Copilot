@@ -112,17 +112,16 @@ def _extract_json(text: str) -> dict | None:
 
 @tool
 async def parse_document() -> dict:
-    """解析当前会话第一个已上传的简历文件，返回结构化画像数据，无需参数"""
+    """解析当前会话第一个已上传的简历文件，返回 {table, data, errors}。data 为 null 表示无法解析，errors 非空时 data 仍可能有效（校验警告不阻断）。无需参数"""
     from app.api.agent import _parsed_files
 
     session_id = _current_session_id
     files = _parsed_files.get(session_id, {})
     if not files:
-        return {"error": "当前会话无已上传文件，请先上传简历"}
+        return {"table": "user_profiles", "data": None, "errors": ["当前会话无已上传文件，请先上传简历"]}
 
     from app.tools.llm import zhipu_llm as llm
 
-    # 只取第一个文件
     first_file = next(iter(files.values()))
     filename = first_file["filename"]
     messages = [
@@ -133,14 +132,11 @@ async def parse_document() -> dict:
     raw = result.content
     parsed = _extract_json(raw)
     if parsed is None:
-        return {"error": f"JSON解析失败，原始输出:\n{raw}"}
+        return {"table": "user_profiles", "data": None, "errors": [f"JSON解析失败，原始输出:\n{raw}"]}
     errors = _validate_profile(parsed)
-    if errors:
-        return {"error": f"校验警告: {', '.join(errors)}\n{json.dumps(parsed, ensure_ascii=False, indent=2)}"}
-
     parsed["id"] = str(uuid.uuid4())
     return {
         "table": "user_profiles",
         "data": parsed,
-        "instruction": f"下一步请调用 db_write(table='user_profiles', data={json.dumps(parsed, ensure_ascii=False)})",
+        "errors": errors,
     }

@@ -40,6 +40,18 @@
             {{ msg.content }}
           </div>
         </div>
+
+        <!-- 中断确认气泡：系统以消息形式推送询问，带同意/拒绝按钮 -->
+        <div v-if="interrupt" class="message system">
+          <div class="avatar">!</div>
+          <div class="content interrupt-content">
+            <p>{{ interrupt.question }}</p>
+            <div class="interrupt-actions">
+              <button class="btn-agree" @click="resumeChat('是')">同意</button>
+              <button class="btn-reject" @click="resumeChat('否')">拒绝</button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- File upload queue -->
@@ -60,11 +72,6 @@
         </div>
       </div>
 
-      <div v-if="interrupt" class="interrupt-banner">
-        <p>{{ interrupt.question }}</p>
-        <input v-model="userAnswer" placeholder="请输入..." @keyup.enter="resumeChat" />
-        <button @click="resumeChat">确认</button>
-      </div>
       <div class="input-area">
         <button class="upload-btn" @click="$refs.fileUpload.click()" :disabled="thinking" title="上传简历">
           📎
@@ -85,7 +92,6 @@ import { useSessionStore } from '../stores/session'
 const store = useSessionStore()
 
 const input = ref('')
-const userAnswer = ref('')
 const interrupt = ref(null)
 const thinking = ref(false)
 const msgContainer = ref(null)
@@ -199,6 +205,7 @@ async function sendMessage() {
           store.messages = store.messages.filter(m => m.id !== thinkingMsg.id)
           interrupt.value = null
           store.fetchProfile()
+          store.fetchResumes()
         } else if (data.question) {
           store.messages = store.messages.filter(m => m.id !== thinkingMsg.id)
           interrupt.value = data
@@ -209,12 +216,12 @@ async function sendMessage() {
   store.messages = store.messages.filter(m => m.id !== thinkingMsg.id)
   thinking.value = false
   store.fetchProfile()
+  store.fetchResumes()
 }
 
-async function resumeChat() {
-  if (!userAnswer.value.trim()) return
-  store.addMessage('user', userAnswer.value)
-  const text = userAnswer.value; userAnswer.value = ''
+async function resumeChat(answer) {
+  interrupt.value = null
+  store.addMessage('user', answer)
   scrollDown()
 
   const thinkingMsg = { role: 'agent', content: '思考中', thinking: true, id: nextMsgId() }
@@ -222,11 +229,10 @@ async function resumeChat() {
   thinking.value = true
   scrollDown()
 
-  const response = await api.resumeChat(text, store.currentId)
+  const response = await api.resumeChat(answer, store.currentId)
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
-  let agentMsg = null
 
   while (true) {
     const { done, value } = await reader.read()
@@ -237,25 +243,23 @@ async function resumeChat() {
       if (!line.startsWith('data: ')) continue
       try {
         const data = JSON.parse(line.slice(6))
-        if (data.type === 'chunk') {
-          if (!agentMsg) {
-            store.messages = store.messages.filter(m => m.id !== thinkingMsg.id)
-            agentMsg = { role: 'agent', content: '', id: nextMsgId() }
-            store.messages.push(agentMsg)
-          }
-          agentMsg.content += data.content
+        if (data.type === 'response') {
+          store.messages = store.messages.filter(m => m.id !== thinkingMsg.id)
+          store.addMessage('agent', data.content)
           scrollDown()
         } else if (data.type === 'done') {
           store.messages = store.messages.filter(m => m.id !== thinkingMsg.id)
-          interrupt.value = null
           store.fetchProfile()
+          store.fetchResumes()
+        } else if (data.question) {
+          store.messages = store.messages.filter(m => m.id !== thinkingMsg.id)
+          interrupt.value = data
         }
       } catch (e) {}
     }
   }
   store.messages = store.messages.filter(m => m.id !== thinkingMsg.id)
   thinking.value = false
-  store.fetchProfile()
 }
 
 onMounted(async () => {
@@ -568,30 +572,47 @@ onMounted(async () => {
   border-color: #f44336;
 }
 
-.interrupt-banner {
-  background: #fff3e0;
-  padding: 12px 16px;
-  margin: 0 16px;
-  border-radius: 8px;
+.interrupt-content {
+  text-align: center;
+}
+
+.interrupt-content p {
+  font-size: 14px;
+  margin: 0 0 10px 0;
+  color: #555;
+}
+
+.interrupt-actions {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  gap: 10px;
+  justify-content: center;
 }
 
-.interrupt-banner input {
-  flex: 1;
-  padding: 6px 10px;
-  border: 1px solid #ccc;
+.btn-agree, .btn-reject {
+  padding: 5px 18px;
   border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
 }
 
-.interrupt-banner button {
-  padding: 6px 16px;
+.btn-agree {
   background: #1976d2;
   color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
+}
+
+.btn-agree:hover {
+  background: #1565c0;
+}
+
+.btn-reject {
+  background: #f5f5f5;
+  color: #666;
+  border: 1px solid #ddd;
+}
+
+.btn-reject:hover {
+  background: #e0e0e0;
 }
 
 .input-area {
