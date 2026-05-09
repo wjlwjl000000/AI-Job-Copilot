@@ -1,12 +1,6 @@
-"""ReAct cycle helper tools and SKILL loader. TOOL 绑定在 Agent 上，由 Agent 在 ReAct 循环中自主调用。"""
+"""Agent tools. TOOL 绑定在 Agent 上，由 Agent 自主调用。"""
 import os
 from langchain_core.tools import tool
-
-
-@tool
-def react() -> str:
-    """Agent 仍处于思考阶段，暂无合适工具可调用时使用。返回提示让 Agent 继续 Think 阶段。"""
-    return "任务未完成，仍需思考。请继续分析下一步应该调用哪个工具。"
 
 
 @tool

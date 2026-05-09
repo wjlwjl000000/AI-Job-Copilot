@@ -43,7 +43,7 @@ description: Use when a resume file has been uploaded and needs parsing into a s
 - 步骤1 有画像 → 额外传入 record_id=已有画像ID
 - db_write 返回后必须立即进入步骤5
 
-**步骤5** — 调用 save_resume(messages="是否保存当前解析的简历文件-{步骤2返回 data 中的 id}")
+**步骤5** — 调用 save_resume(messages="是否保存当前解析的简历文件-{步骤2返回 data 中的 id}\n注意：不保存则可能影响后续简历优化环节")
 - 触发系统中断，前端弹窗询问用户是否保存原始简历
 - save_resume 返回后必须立即进入步骤6
 

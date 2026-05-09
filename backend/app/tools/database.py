@@ -19,14 +19,22 @@ def _encode_json_fields(data: dict) -> dict:
 
 
 @tool
-async def db_read(table: str, filters: dict = None) -> list[dict]:
-    """读数据库查询。table: users|user_profiles|resumes|jobs|applications|experience_stories。filters: {column: value}"""
+async def db_read(table: str, filters: dict = None, fields: list[str] = None) -> list[dict]:
+    """读数据库查询。table: users|user_profiles|resumes|jobs|applications|experience_stories。filters: {column: value}。fields: 指定返回列名列表，不传返回全部列。
+常用字段 — user_profiles: name,contact,basic,education,skills,projects,organization,work_years,target,scores,summary | resumes: id,user_id,title,base_version,target_role,content,file_path,match_scores"""
+    if fields:
+        for f in fields:
+            if not f.isidentifier():
+                raise ValueError(f"无效字段名: {f}")
+        cols = ", ".join(fields)
+    else:
+        cols = "*"
     async with async_session() as session:
         if filters:
             conditions = " AND ".join([f"{k} = :{k}" for k in filters])
-            query = text(f"SELECT * FROM {table} WHERE {conditions}")
+            query = text(f"SELECT {cols} FROM {table} WHERE {conditions}")
         else:
-            query = text(f"SELECT * FROM {table}")
+            query = text(f"SELECT {cols} FROM {table}")
         result = await session.execute(query, filters or {})
         return [dict(row._mapping) for row in result.fetchall()]
 
