@@ -22,69 +22,70 @@ description: Use when the user wants to evaluate how well their profile matches 
 ## Workflow
 以下步骤必须按序逐一执行。每步完成后必须立即进入指定下一步，禁止跳过或提前终止（步骤5除外）。
 
-**步骤1** — 调用 db_read(table="user_profiles", fields=["skills", "work_years", "education", "target"]) 获取画像和目标 JD
-- 返回空数组 → 输出"尚未构建求职画像，请先上传简历"，跳到步骤5
-- 返回画像但 target.jd 为空 → 输出"未指定目标JD，请提供目标岗位描述后再评估"，跳到步骤5
-- 返回画像且 target.jd 有内容 → 提取以下数据并进入步骤2：
-  - profile.skills（技能列表及等级）
-  - profile.work_years（工作年限）
-  - profile.education（学历信息）
-  - profile.target.salary_range（期望薪资）
-  - target.jd.requirements（JD 技能要求列表）
-  - target.jd.title（目标岗位名）
-  - target.jd.salary_range（JD 薪资范围，如有）
+**步骤1** — 获取画像和 JD（两个数据缺一不可）：
 
-**步骤2** — Agent 推理阶段（不调用工具）：四维度逐一评分
-必须按以下顺序完成四个维度的评分，每个维度评完后记录分数和依据，全部完成后才能进入步骤3：
+[1a] JD 获取 — 必须只能选择以下一种方式：
 
-维度一 — 技能重合度 (skill_match, 权重 0.40)：
-- 从步骤1的 target.jd 内容中提取所有技能要求（硬性+优先）
-- 逐项与 profile.skills 对比，统计 匹配数 / 要求总数
-- 标注缺失技能，尤其标记 jd.requirements 中 required=true 的项
-- 得出 0-1 分数：全匹配=1.0，缺一项硬性扣 0.2，缺一项优先扣 0.1
+  方式A — 任务数据中有 job_id：
+    call: db_read(table="jobs", filters={"id": "<job_id>"})
+    → 提取 jd_content（全文）、requirements（技能要求数组）、company（公司名）、salary_range
+    → 进入步骤2
 
-维度二 — 经验匹配度 (experience_match, 权重 0.25)：
-- 从 jd 内容中推断经验年限要求和行业方向要求
-- 对比 profile.work_years：达标得满分，每差1年扣0.15
-- 对比行业方向（如profile的行业 vs jd所在行业）是否一致
-- 得出 0-1 分数
+  方式B — 任务数据中有 jd_content 文本：
+    → 直接使用该文本作为 JD。从文本中自行提取技能要求、岗位名、薪资信息
+    → 进入步骤2
 
-维度三 — 学历匹配度 (education_match, 权重 0.15)：
-- 从 jd 内容中提取学历要求
-- 对比 profile.education.degree：达标得满分，差一级扣0.3
-- 得出 0-1 分数
+  方式C — 以上均无：
+    → 输出"未提供目标JD。请指定 job_id 或直接输入 JD 描述"，跳到步骤4
 
-维度四 — 薪资匹配度 (salary_match, 权重 0.20)：
-- 将 profile.target.salary_range 与 jd 中的薪资范围对比
-- 期望薪资完全落在JD范围内=1.0
-- 期望薪资部分超出=0.5，完全超出=0.0
-- JD未标注薪资范围时默认为0.5（中性）
-- 得出 0-1 分数
+[1b] 画像获取：
+  call: db_read(table="user_profiles", fields=["skills", "work_years", "education", "target"])
+  → 返回空数组 → 输出"尚未构建求职画像，请先上传简历"，跳到步骤5
+  → 返回画像 → 提取 skills、work_years、education、target.salary_range → 进入步骤2
 
-加权总分：overall = skill_match × 0.40 + experience_match × 0.25 + education_match × 0.15 + salary_match × 0.20
+**步骤2** — 调用 calculate_match_score 进行四维度评分：
+
+  评分规则详见 references/ 目录文件：
+  - 字段映射关系 → load_reference(skill_name="score-match", ref_path="field-mapping.md")
+  - 评分公式规则 → load_reference(skill_name="score-match", ref_path="scoring-formula.md")
+  - 学历等第映射 → load_reference(skill_name="score-match", ref_path="education-levels.md")
+  （以上三文件可并行加载或在首次评分需要时加载，后续评分可复用。）
+
+  call: calculate_match_score(
+    profile_skills=<步骤1的 skills>,
+    profile_work_years=<步骤1的 work_years>,
+    profile_education=<步骤1的 education>,
+    profile_salary=<步骤1的 target.salary_range>,
+    jd_requirements=<步骤1的 requirements>,
+    jd_salary=<步骤1的 salary_range>,
+    jd_content=<步骤1的 jd_content>
+  )
+  → 返回 {skill_match, experience_match, education_match, salary_match, overall, details}
+
+  call: infer(content="[评分结果] skill_match=<值> | experience_match=<值> | education_match=<值> | salary_match=<值> | overall=<值> | 详情见 details")
+  → 进入步骤3
 
 **步骤3** — [条件] overall < 0.6
-→ 必须调用 call_support_agent(trigger="low_match", context={overall, key_gaps: 从步骤2提取的前3个缺失项})
-→ 返回后进入步骤4
-overall >= 0.6 → 直接进入步骤4
+  → 必须调用 call_support_agent(trigger="low_match", profile_id="<步骤1 画像的 id>", context={overall: <分数>, key_gaps: <details.skill.missing_names 的前3个>})
+  → 调用失败时（如连接错误），记录 support_content="（支持服务暂不可用）"，继续执行
+  → 返回后进入步骤4
+  overall >= 0.6 → 直接进入步骤4
 
-**步骤4** — [条件] overall < 0.8 且步骤2中有可通过优化简历改善的差距（如技能关键词缺失、项目描述不匹配）
-→ 在步骤5的总结中附带："该岗位匹配度有提升空间，是否需要我针对此JD优化您的简历？"
-→ 进入步骤5
-
-**步骤5** — 以自然语言输出完整评分报告：
-- 目标岗位：[title]，加权总分：overall
+**步骤4** — 以自然语言输出完整评分报告：
+- 目标岗位：[来自 JD 的岗位名或公司名]，加权总分：overall（保留两位小数）
 - 四个维度分别得分及分析依据
 - 匹配亮点（strengths）：得分较高的维度及具体匹配项
 - 差距分析（gaps）：逐项列出缺失技能/条件，标注是否为JD硬性要求
 - 改进建议（suggestions）：针对每个差距的可操作建议
-- 如步骤4触发，结尾附带优化建议询问
+- 如果步骤2的 overall < 0.8，结尾附带："该岗位匹配度有提升空间，是否需要我针对此JD优化您的简历？"
 
 ## Common Mistakes
+- db_read 遗漏 table 参数 → 第一个参数必须是表名字符串，如 db_read(table="user_profiles", ...)
+- filters 的 key 编造列名 → 必须使用目标表的真实列名（如 jobs 表用 id，不是 job_id）
 - 评分时只凭印象不逐项对比 → 步骤2必须按四维度逐一分析，每项记录依据
-- overall < 0.6 时忘记调用 call_support_agent → 步骤3 是强制条件
-- 技能对比只数数量不关注 required 标记 → required=true 的技能缺失需重点标注
-- 数据来源错误 → 所有画像数据来自步骤1的 user_profiles，不从其他表获取
+- overall < 0.6 时忘记调用 call_support_agent → 步骤4 是强制条件
+- call_support_agent 遗漏 profile_id → 必须传入步骤1画像的 id
+- 数据来源错误 → 画像数据来自 user_profiles，JD 来自 jobs 表或 jd_content 文本
 
 ## Examples
 

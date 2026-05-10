@@ -15,6 +15,11 @@ agent_card = create_agent_card(
         {"id": "score-match", "name": "匹配度评估", "description": "多维度评估简历与JD的匹配度", "examples": ["我和这个岗位匹配吗"]},
         {"id": "optimize-resume", "name": "简历优化", "description": "针对特定JD生成优化版简历", "examples": ["帮我优化简历"]},
     ],
+    input_fields=[
+        {"name": "job_id", "type": "string", "required": False, "description": "目标职位的唯一标识符，从用户消息的 context 或对话中提取"},
+        {"name": "jd_content", "type": "string", "required": False, "description": "JD 文本内容，用户直接输入的职位描述"},
+        {"name": "resume_id", "type": "string", "required": False, "description": "要使用/优化的简历版本ID"},
+    ],
 )
 
 mount_agent_card(app, agent_card.model_dump())

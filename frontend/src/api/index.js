@@ -31,6 +31,7 @@ export const api = {
   deleteResume: (id) => request('DELETE', `/api/resumes/${id}`),
 
   // Jobs
+  listJobs: () => request('GET', '/api/jobs'),
   getJob: (id) => request('GET', `/api/jobs/${id}`),
   createJob: (data) => request('POST', '/api/jobs', data),
 
@@ -48,8 +49,8 @@ export const api = {
   getMessages: (sessionId) => request('GET', `/api/sessions/${sessionId}/messages`),
 
   // Agent Chat
-  sendChatMessage: (message, sessionId) => {
-    const body = { message }
+  sendChatMessage: (message, sessionId, context) => {
+    const body = { message, context: context || undefined }
     if (sessionId) body.session_id = sessionId
     return fetch(`${BASE}/api/agent/chat`, {
       method: 'POST',

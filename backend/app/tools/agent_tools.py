@@ -1,16 +1,48 @@
 """Agent tools. TOOL 绑定在 Agent 上，由 Agent 自主调用。"""
 import os
+from typing import Annotated
 from langchain_core.tools import tool
+
+_VALID_SKILLS = {
+    "build-profile", "match-jobs", "score-match", "optimize-resume",
+    "generate-interview-qs", "evaluate-answer", "comfort-user", "daily-checkin",
+}
 
 
 @tool
-def load_skill(skill_name: str = "") -> str:
-    """加载指定 SKILL 的完整工作流和指令。skill_name 是必填参数，值为 SKILL 文件名（不含 .md），如 build-profile, match-jobs, score-match, optimize-resume, generate-interview-qs, evaluate-answer, comfort-user, daily-checkin"""
+def infer(
+    content: Annotated[str, "推理内容，必填。记录当前的分析思路、判断依据、中间结论等"],
+) -> str:
+    """记录推理过程。在 SKILL 的推理步骤（如评分分析、多维度对比）中调用，用于留存推理结果到对话历史。传入什么就返回什么。"""
+    return content
+
+
+@tool
+def load_reference(
+    skill_name: Annotated[str, "SKILL 名称，必填。如 score-match, match-jobs 等"],
+    ref_path: Annotated[str, "reference 文件路径（相对于 references/ 目录），必填。如 scoring-formula.md, field-mapping.md"],
+) -> str:
+    """加载指定 SKILL 的 reference 文件内容。读取 app/skills/<skill_name>/references/<ref_path>。用于在 SKILL 步骤中按需获取详细规则。"""
+    import os
+    path = os.path.join("app/skills", skill_name, "references", ref_path)
+    if not os.path.isfile(path):
+        return f"Reference 文件不存在: skills/{skill_name}/references/{ref_path}"
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
+
+
+@tool
+def load_skill(
+    skill_name: Annotated[str, "SKILL 文件名（不含 .md），必填。可选值：build-profile | match-jobs | score-match | optimize-resume | generate-interview-qs | evaluate-answer | comfort-user | daily-checkin"],
+) -> str:
+    """加载指定 SKILL 的完整工作流和指令。收到任务后必须第一步调用此工具。"""
     if not skill_name:
-        return "错误：load_skill 必须传入 skill_name 参数。请重新调用，例如 load_skill(skill_name='build-profile')。"
+        return "错误：skill_name 是必填参数。示例: load_skill(skill_name='build-profile')"
+    if skill_name not in _VALID_SKILLS:
+        return f"错误：未知 SKILL '{skill_name}'。可用: {', '.join(sorted(_VALID_SKILLS))}"
     path = os.path.join("app/skills", skill_name, "SKILL.md")
     if not os.path.isfile(path):
-        return f"SKILL '{skill_name}' 不存在。可用: build-profile, match-jobs, score-match, optimize-resume, generate-interview-qs, evaluate-answer, comfort-user, daily-checkin。"
+        return f"SKILL '{skill_name}' 文件不存在。"
     with open(path, "r", encoding="utf-8") as f:
         content = f.read()
     parts = content.split("---")
@@ -19,10 +51,12 @@ def load_skill(skill_name: str = "") -> str:
 
 
 @tool
-async def read_qa_queue(interview_id: str = "") -> str:
-    """读取指定面试记录 questions 字段中所有 Q&A 内容。interview_id 为必填参数。供 generate-interview-qs 和 evaluate-answer 使用。"""
+async def read_qa_queue(
+    interview_id: Annotated[str, "面试记录 ID，必填。格式如 'iv-xxx'"],
+) -> str:
+    """读取指定面试记录的完整 Q&A 内容。返回格式化的问题和回答列表。"""
     if not interview_id:
-        return "错误：read_qa_queue 必须传入 interview_id 参数，例如 read_qa_queue(interview_id='iv-xxx')。"
+        return "错误：interview_id 是必填参数。示例: read_qa_queue(interview_id='iv-xxx')"
     from app.tools.database import db_read
     rows = await db_read.ainvoke({"table": "interviews", "filters": {"id": interview_id}})
     if not rows:

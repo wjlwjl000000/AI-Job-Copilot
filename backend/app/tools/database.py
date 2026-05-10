@@ -18,14 +18,43 @@ def _encode_json_fields(data: dict) -> dict:
     return encoded
 
 
+_VALID_TABLES = {"users", "user_profiles", "resumes", "jobs", "applications", "experience_stories", "interviews"}
+
+# 每个表的合法列名（白名单），用于校验 filters key 和 fields
+_TABLE_COLUMNS: dict[str, set[str]] = {
+    "users": {"id", "email", "password_hash", "created_at"},
+    "user_profiles": {"id", "name", "contact", "basic", "education", "skills",
+                      "projects", "organization", "work_years", "target", "scores", "summary"},
+    "resumes": {"id", "user_id", "title", "base_version", "target_role",
+                "content", "file_path", "match_scores"},
+    "jobs": {"id", "source", "source_id", "jd_content", "requirements",
+             "company", "salary_range", "city", "status"},
+    "applications": {"id", "user_id", "resume_id", "job_id", "status", "timeline", "notes"},
+    "experience_stories": {"id", "tags", "content", "source", "source_url",
+                           "is_anonymous", "approved"},
+    "interviews": {"id", "application_id", "questions", "overall_feedback",
+                   "weaknesses", "status"},
+}
+
+
 @tool
-async def db_read(table: str, filters: dict = None, fields: list[str] = None) -> list[dict]:
-    """读数据库查询。table: users|user_profiles|resumes|jobs|applications|experience_stories。filters: {column: value}。fields: 指定返回列名列表，不传返回全部列。
-常用字段 — user_profiles: name,contact,basic,education,skills,projects,organization,work_years,target,scores,summary | resumes: id,user_id,title,base_version,target_role,content,file_path,match_scores"""
+async def db_read(
+    table: Annotated[str, "目标表名，必填。可选值：users | user_profiles | resumes | jobs | applications | experience_stories | interviews"],
+    filters: Annotated[dict, "等值过滤条件，key 必须是上表中列出的真实列名。例: {'id': 'xxx'}。禁止使用 user_profile_id、task_id 等不存在的列名"] = None,
+    fields: Annotated[list[str], "指定返回列名列表，不传返回全部列。可选值见上表各表列名"] = None,
+) -> list[dict]:
+    """读数据库查询。返回匹配记录的字典列表，空数组表示无结果。"""
+    if table not in _VALID_TABLES:
+        return [{"error": f"无效表名 '{table}'，可选: {', '.join(sorted(_VALID_TABLES))}"}]
+    valid_cols = _TABLE_COLUMNS.get(table, set())
+    if filters:
+        for k in filters:
+            if k not in valid_cols:
+                return [{"error": f"无效列名 '{k}'（表 {table}），合法列名: {', '.join(sorted(valid_cols))}"}]
     if fields:
         for f in fields:
-            if not f.isidentifier():
-                raise ValueError(f"无效字段名: {f}")
+            if f not in valid_cols:
+                return [{"error": f"无效列名 '{f}'（表 {table}），合法列名: {', '.join(sorted(valid_cols))}"}]
         cols = ", ".join(fields)
     else:
         cols = "*"
@@ -39,12 +68,18 @@ async def db_read(table: str, filters: dict = None, fields: list[str] = None) ->
         return [dict(row._mapping) for row in result.fetchall()]
 
 
+_WRITABLE_TABLES = {"user_profiles", "resumes", "jobs", "applications", "experience_stories", "interviews"}
+
+
 @tool
-async def db_write(table: Annotated[str,"目标表名，可选值：user_profiles|resumes|jobs|applications|experience_stories"],
-                   data: Annotated[dict,"要写入的字段数据，dict格式"],
-                   record_id: Annotated[str,"记录的唯一标识符。若提供则更新现有记录；若为 None 则创建新记录。"] = None
-                   ) -> str:
-    """向指定数据库表写入数据，返回ok字符串"""
+async def db_write(
+    table: Annotated[str, "目标表名，必填。可选值：user_profiles | resumes | jobs | applications | experience_stories | interviews"],
+    data: Annotated[dict, "要写入的字段数据，dict 格式。必须包含目标表的所有必填列"],
+    record_id: Annotated[str, "记录的唯一标识符。若提供则 UPDATE 现有记录；若为 None 则 INSERT 新记录。"] = None,
+) -> str:
+    """向指定数据库表写入数据，返回 'ok' 或错误信息。"""
+    if table not in _WRITABLE_TABLES:
+        return f"错误：无效表名 '{table}'，可选: {', '.join(sorted(_WRITABLE_TABLES))}"
     data = _encode_json_fields(data)
     async with async_session() as session:
         if record_id:

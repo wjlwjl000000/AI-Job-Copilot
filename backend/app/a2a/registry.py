@@ -29,7 +29,12 @@ class AgentRegistry:
 
     def get_all_summaries(self) -> list[dict]:
         return [
-            {"name": name, "description": card["description"], "skills": card.get("skills", [])}
+            {
+                "name": name,
+                "description": card["description"],
+                "skills": card.get("skills", []),
+                "inputSchema": card.get("inputSchema", {"fields": []}),
+            }
             for name, card in self._agents.items()
             if "support" not in name.lower()
         ]

@@ -5,7 +5,8 @@ from app.tools.database import db_read, db_write, read_profile
 from app.tools.chroma import chroma_query
 from app.tools.search import web_search
 from app.tools.call_support import call_support_agent
-from app.tools.agent_tools import load_skill
+from app.tools.agent_tools import load_skill, load_reference, infer
+from app.tools.score_calc import calculate_match_score
 from app.tools.skill_utils import build_skills_list
 from app.middleware.sliding_window import SlidingWindowMiddleware
 
@@ -23,6 +24,13 @@ _prompt = f"""你是职位匹配与简历优化专家。
 - SKILL 中未列出的工具调用，不得自行添加
 - 所有步骤执行完毕 → 以自然语言输出全面、具体的总结
 
+## Tool Call Rules (MANDATORY — 违反将导致任务失败)
+1. **调用前必读 docstring**：每次工具调用前，必须完整阅读该工具的 docstring。参数名、类型、允许值、是否必填均以 docstring 中的 Annotated 描述为准。
+2. **参数取值来源唯一**：参数值只能从以下来源获取 — SKILL 步骤中明确写出的值、之前步骤中工具返回的数据、任务数据中提供的值。禁止编造参数值、禁止将 task_id 当作记录 id 使用、禁止猜测表名或集合名。
+3. **必填参数禁止省略**：docstring 中标注"必填"的参数必须提供，不得跳过。
+4. **允许值集合约束**：如果参数 docstring 中列出了明确的允许值集合（如 table、collection 等），必须从中选择，禁止自行编造。
+5. **失败重试策略**：工具返回错误信息时，先仔细阅读错误内容，根据错误提示修正参数后重试。禁止不加修改地重复相同调用。
+
 ## 约束
 - 只做职位匹配、匹配度评估和简历优化。不做首次画像构建（Profile Agent 职责）、面试准备（Interview Agent 职责）、情感支持
 - 匹配度低于 0.6 时，主动调用 call_support_agent 获取鼓励内容，但不做心理咨询
@@ -37,6 +45,7 @@ _prompt = f"""你是职位匹配与简历优化专家。
 
 matching_agent = create_agent(
     model=llm, system_prompt=_prompt,
-    tools=[read_profile, db_read, db_write, chroma_query, web_search, call_support_agent, load_skill],
+    tools=[read_profile, db_read, db_write, chroma_query, web_search, call_support_agent,
+           load_skill, load_reference, calculate_match_score, infer],
     middleware=[SlidingWindowMiddleware(max_messages=20), ToolRetryMiddleware(max_retries=2)],
 )

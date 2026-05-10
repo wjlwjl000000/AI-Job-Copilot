@@ -44,7 +44,9 @@ async def _execute_task(task: dict, session_id: str, client: A2AClient
 
     url = _agent_url(task["agent"])
     data = dict(task.get("data", {}))
-    if session_id:
+    # 仅 Profile Agent 注入 session_id 用于关联已上传文件；其他 Agent 不注入系统字段
+    agent_name = task.get("agent", "")
+    if "profile" in agent_name.lower() and session_id:
         data["session_id"] = session_id
         from app.api.agent import _parsed_files as supervisor_files
         if session_id in supervisor_files:

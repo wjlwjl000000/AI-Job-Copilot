@@ -77,19 +77,22 @@
           📎
         </button>
         <input type="file" ref="fileUpload" @change="handleFilePicked" accept=".pdf,.docx,.doc,.txt" style="display:none" />
-        <input v-model="input" @keyup.enter="sendMessage" placeholder="输入消息..." :disabled="thinking" />
-        <button @click="sendMessage" :disabled="thinking || store.fileList.some(f => f.parsing)">发送</button>
+        <input v-model="input" @keyup.enter="sendMessage()" placeholder="输入消息..." :disabled="thinking" />
+        <button @click="sendMessage()" :disabled="thinking || store.fileList.some(f => f.parsing)">发送</button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted } from 'vue'
+import { ref, nextTick, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { api } from '../api'
 import { useSessionStore } from '../stores/session'
 
 const store = useSessionStore()
+const route = useRoute()
+const router = useRouter()
 
 const input = ref('')
 const interrupt = ref(null)
@@ -165,13 +168,14 @@ async function removeFile(idx) {
 }
 
 // Chat
-async function sendMessage() {
+async function sendMessage(text, context) {
   const hasFiles = store.fileList.some(f => !f.parsing)
-  if ((!input.value.trim() && !hasFiles) || thinking.value) return
+  const msgText = text || input.value.trim()
+  if ((!msgText && !hasFiles) || thinking.value) return
   if (store.fileList.some(f => f.parsing)) return
   if (!store.currentId) return
 
-  const displayText = input.value.trim() || (hasFiles ? '请分析我的简历' : '')
+  const displayText = msgText || (hasFiles ? '请分析我的简历' : '')
   input.value = ''
 
   const attachment = hasFiles ? { name: store.fileList.find(f => !f.parsing)?.name, chars: store.fileList.find(f => !f.parsing)?.charCount } : null
@@ -183,7 +187,7 @@ async function sendMessage() {
   thinking.value = true
   scrollDown()
 
-  const response = await api.sendChatMessage(displayText, store.currentId)
+  const response = await api.sendChatMessage(displayText, store.currentId, context)
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
@@ -264,8 +268,29 @@ async function resumeChat(answer) {
 
 onMounted(async () => {
   await store.fetchSessions()
-  scrollDown()
+  // 延迟滚动确保 DOM 渲染完成
+  setTimeout(scrollDown, 100)
+
+  // 从路由 query 参数检测 context（职位匹配页面跳转过来）
+  const q = route.query
+  if (q.job_id) {
+    const ctx = {}
+    if (q.job_id) ctx.job_id = q.job_id
+    if (q.resume_id) ctx.resume_id = q.resume_id
+    // 异步发送，完成后清除 query 参数避免刷新重复触发
+    const waitAndSend = async () => {
+      if (!store.currentId) {
+        await store.createSession()
+      }
+      await sendMessage('帮我评估简历与岗位的匹配度', ctx)
+      router.replace({ query: {} })
+    }
+    waitAndSend()
+  }
 })
+
+// 监听消息变化自动滚动到底部
+watch(() => store.messages.length, () => { scrollDown() })
 </script>
 
 <style scoped>

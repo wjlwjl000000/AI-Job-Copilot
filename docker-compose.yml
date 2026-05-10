@@ -23,8 +23,8 @@ services:
       CHROMA_PORT: 8000
       AGENT_URLS: "http://profile-agent:8001,http://matching-agent:8002,http://interview-agent:8003,http://support-agent:8004"
       LANGCHAIN_TRACING_V2: "true"
-      LANGCHAIN_API_KEY: "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"
-      LANGCHAIN_PROJECT: "agent-tools"
+      LANGCHAIN_API_KEY: "YOUR_LANGSMITH_API_KEY"
+      LANGCHAIN_PROJECT: "AI Agent"
     volumes: ["./backend/app:/app/app"]
 
   profile-agent:
@@ -37,8 +37,8 @@ services:
       CHROMA_HOST: chroma
       CHROMA_PORT: 8000
       LANGCHAIN_TRACING_V2: "true"
-      LANGCHAIN_API_KEY: "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"
-      LANGCHAIN_PROJECT: "agent-tools"
+      LANGCHAIN_API_KEY: "YOUR_LANGSMITH_API_KEY"
+      LANGCHAIN_PROJECT: "AI Agent"
     volumes: ["./backend/app:/app/app"]
 
   matching-agent:
@@ -51,8 +51,8 @@ services:
       CHROMA_HOST: chroma
       CHROMA_PORT: 8000
       LANGCHAIN_TRACING_V2: "true"
-      LANGCHAIN_API_KEY: "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"
-      LANGCHAIN_PROJECT: "agent-tools"
+      LANGCHAIN_API_KEY: "YOUR_LANGSMITH_API_KEY"
+      LANGCHAIN_PROJECT: "AI Agent"
     volumes: ["./backend/app:/app/app"]
 
   interview-agent:
@@ -65,8 +65,8 @@ services:
       CHROMA_HOST: chroma
       CHROMA_PORT: 8000
       LANGCHAIN_TRACING_V2: "true"
-      LANGCHAIN_API_KEY: "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"
-      LANGCHAIN_PROJECT: "agent-tools"
+      LANGCHAIN_API_KEY: "YOUR_LANGSMITH_API_KEY"
+      LANGCHAIN_PROJECT: "AI Agent"
     volumes: ["./backend/app:/app/app"]
 
   support-agent:
@@ -79,8 +79,8 @@ services:
       CHROMA_HOST: chroma
       CHROMA_PORT: 8000
       LANGCHAIN_TRACING_V2: "true"
-      LANGCHAIN_API_KEY: "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"
-      LANGCHAIN_PROJECT: "agent-tools"
+      LANGCHAIN_API_KEY: "YOUR_LANGSMITH_API_KEY"
+      LANGCHAIN_PROJECT: "AI Agent"
     volumes: ["./backend/app:/app/app"]
 
   frontend:

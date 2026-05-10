@@ -31,6 +31,7 @@ class ChatRequest(BaseModel):
     message: str
     session_id: str | None = None
     turn_id: str | None = None
+    context: dict | None = None
 
 
 @router.post("/chat")
@@ -64,10 +65,16 @@ async def agent_chat(
     if not turn_id:
         turn_id = request.turn_id or str(uuid.uuid4())
 
+    # 构建 Planner 可见的有效消息（context 注入到消息中，便于 Planner 提取 job_id 等）
+    effective_message = request.message
+    if request.context:
+        ctx_parts = [f"{k}={v}" for k, v in request.context.items()]
+        effective_message = f"{request.message}\n[context: {', '.join(ctx_parts)}]"
+
     initial_state = {
         "user_id": "u-default",
         "session_id": session_id or "",
-        "messages": [HumanMessage(content=request.message)],
+        "messages": [HumanMessage(content=effective_message)],
         "goal": "",
         "plan": [],
         "all_results": {},

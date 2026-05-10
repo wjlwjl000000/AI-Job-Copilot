@@ -14,6 +14,11 @@ agent_card = create_agent_card(
         {"id": "generate-interview-qs", "name": "生成面试问题", "description": "基于JD+弱项生成针对性面试题", "examples": ["帮我准备面试"]},
         {"id": "evaluate-answer", "name": "评估回答", "description": "评估面试回答质量并给出改进建议", "examples": ["评估我的回答"]},
     ],
+    input_fields=[
+        {"name": "job_id", "type": "string", "required": False, "description": "目标职位的唯一标识符，用于获取JD内容"},
+        {"name": "jd_content", "type": "string", "required": False, "description": "JD 文本内容，用户直接输入的职位描述"},
+        {"name": "application_id", "type": "string", "required": False, "description": "关联的投递记录ID"},
+    ],
 )
 
 mount_agent_card(app, agent_card.model_dump())
